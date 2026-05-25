@@ -229,7 +229,7 @@ textarea { resize:vertical; min-height:60px; }
       <div class="regime-section" id="sec-ordinario">
         <div class="grid-3">
           <div><label>Tipo Soggetto</label>
-            <select id="o_tipo" onchange="updateTotals()">
+            <select id="o_tipo" onchange="setOTipo(this.value)">
               <option value="ditta">Ditta individuale / Soc. persone — ordinaria</option>
               <option value="srl">SRL / Società di capitali — ordinaria</option>
               <option value="custom">Tariffa personalizzata</option>
@@ -612,6 +612,27 @@ function addRow(sec) {
   updateTotals();
 }
 
+// ─── TIPO SOGGETTO ORDINARIO ──────────────────────────────────
+function setOTipo(tipo) {
+  // Pre-compila i valori consigliati solo quando si cambia tipo
+  // L'utente può poi modificarli liberamente
+  if (tipo === 'ditta') {
+    document.getElementById('o_mens').value = 208;
+    document.getElementById('o_ann').value  = 2500;
+    document.getElementById('o_ass').value  = 350;
+    document.getElementById('o_bil').value  = 600;
+    document.getElementById('o_dep').value  = 300;
+  } else if (tipo === 'srl') {
+    document.getElementById('o_mens').value = 400;
+    document.getElementById('o_ann').value  = 4800;
+    document.getElementById('o_ass').value  = 500;
+    document.getElementById('o_bil').value  = 800;
+    document.getElementById('o_dep').value  = 300;
+  }
+  // 'custom' → lascia i valori che l'utente ha inserito
+  updateTotals();
+}
+
 // ─── SECTION TOGGLE ──────────────────────────────────────────
 function toggleSez(sec) {
   const on = document.getElementById(sec+'_on').checked;
@@ -654,9 +675,7 @@ function updateTotals() {
   document.getElementById('s_disp').textContent = '€ ' + fmt(sc) + ' + IVA';
   document.getElementById('s_mese').textContent = fmt(sc/12);
 
-  const oTipo = document.getElementById('o_tipo').value;
-  if (oTipo==='ditta') { document.getElementById('o_mens').value=208; document.getElementById('o_ann').value=2500; }
-  else if (oTipo==='srl') { document.getElementById('o_mens').value=400; document.getElementById('o_ann').value=4800; }
+  // NOTA: i valori mensile/annuale NON vengono resettati qui — si resettano solo al cambio tipo
 
   const lTot = calcSvc('lavoro');
   const pTot = calcSvc('pratiche');
