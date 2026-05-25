@@ -674,11 +674,16 @@ function toggleSez(sec) {
 function calcSvc(sec) {
   let total = 0;
   document.querySelectorAll(`tr.svc-row[data-sec="${sec}"]`).forEach(row => {
-    const chk = row.querySelector('.svc-chk');
-    const pr  = parseFloat(row.querySelector('.svc-pr').value) || 0;
-    const qt  = parseFloat(row.querySelector('.svc-qt').value) || 0;
+    const chk  = row.querySelector('.svc-chk');
+    if (!chk) return;
+    const prEl = row.querySelector('.svc-pr');
+    const qtEl = row.querySelector('.svc-qt');
+    if (!prEl || !qtEl) return;
+    const pr  = parseFloat(prEl.value) || 0;
+    const qt  = parseFloat(qtEl.value) || 0;
     const sub = pr * qt;
     const sbEl = row.querySelector('.svc-sb');
+    if (!sbEl) return;
     if (chk.checked) {
       sbEl.textContent = '€ ' + fmt(sub);
       sbEl.style.color = '';
@@ -934,7 +939,10 @@ async function loadOfferIntoForm(id) {
     setEditMode(id);
     window.scrollTo({top:0, behavior:'smooth'});
     document.getElementById('preview-area').style.display='none';
-  } catch(e) { alert('Errore caricamento: ' + e.message); }
+  } catch(e) {
+    console.error('loadOfferIntoForm error:', e);
+    alert('Errore caricamento:\n' + e.message + '\n\n' + (e.stack||'').split('\n').slice(0,4).join('\n'));
+  }
 }
 
 // ─── REPRINT FROM DB ──────────────────────────────────────────
