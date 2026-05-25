@@ -22,6 +22,7 @@ body { font-family:Arial,sans-serif; background:#f0f2f5; min-height:100vh; }
 .card-header { background:#1F3864; color:white; padding:11px 18px; font-size:13px; font-weight:bold; letter-spacing:.5px; text-transform:uppercase; display:flex; align-items:center; justify-content:space-between; }
 .card-header.green  { background:#1B5E20; }
 .card-header.purple { background:#4A148C; }
+.card-header.teal   { background:#00695C; }
 .card-body { padding:18px; }
 
 /* FORMS */
@@ -72,6 +73,10 @@ textarea { resize:vertical; min-height:60px; }
 .svc-table tr.svc-off .col-sb { color:#ccc; }
 .svc-table .del-btn { background:none; border:none; cursor:pointer; color:#e53935; font-size:16px; padding:0 4px; line-height:1; }
 .svc-table .del-btn:hover { color:#b71c1c; }
+.btn-edit-sm { background:#1F3864; color:white; border:none; border-radius:4px; padding:3px 9px; font-size:11px; cursor:pointer; }
+.btn-edit-sm:hover { background:#2E5090; }
+.btn-reprint-sm { background:#1B5E20; color:white; border:none; border-radius:4px; padding:3px 9px; font-size:11px; cursor:pointer; }
+.btn-reprint-sm:hover { background:#2E7D32; }
 .sec-total { margin-top:8px; text-align:right; font-size:13px; font-weight:bold; color:#1F3864; padding:8px 10px; background:#EEF3FB; border-radius:5px; border:1px solid #C0C8D8; }
 .add-row-btn { margin-top:10px; background:none; border:1px dashed #C0C8D8; border-radius:5px; padding:7px 14px; font-size:12px; color:#555; cursor:pointer; display:flex; align-items:center; gap:6px; width:100%; justify-content:center; transition:all .15s; }
 .add-row-btn:hover { border-color:#1F3864; color:#1F3864; background:#EEF3FB; }
@@ -128,6 +133,7 @@ textarea { resize:vertical; min-height:60px; }
 .sec-bar.navy   { background:#2E5090; }
 .sec-bar.green  { background:#1B5E20; }
 .sec-bar.purple { background:#4A148C; }
+.sec-bar.teal   { background:#00695C; }
 .dbullet { font-size:12px; color:#333; border-left:3px solid #C0C8D8; margin:4px 0; padding:4px 10px; }
 .ptbl { width:100%; border-collapse:collapse; margin:7px 0; font-size:12px; }
 .ptbl th { background:#F0F0F0; border:1px solid #C0C8D8; padding:6px 9px; text-align:left; font-size:10px; color:#555; text-transform:uppercase; }
@@ -137,6 +143,7 @@ textarea { resize:vertical; min-height:60px; }
 .total-bar.blue   { background:#1F3864; }
 .total-bar.green  { background:#1B5E20; }
 .total-bar.purple { background:#4A148C; }
+.total-bar.teal   { background:#00695C; }
 .total-bar .tv { font-size:17px; }
 @media print {
   body { background:white; }
@@ -203,6 +210,10 @@ textarea { resize:vertical; min-height:60px; }
           <div><div class="price-box"><div class="plbl">Canone annuale tutto compreso</div><div class="pval" id="f_disp">€ 660,00 + IVA</div><div class="pnote">≈ € <span id="f_mese">55,00</span>/mese</div></div></div>
         </div>
         <p style="font-size:12px;color:#777;margin-top:10px;"><strong>Include:</strong> Modello Unico, F24 telematico, Comunicazioni AdE ordinarie.</p>
+        <table class="svc-table" style="margin-top:10px;"><thead><tr>
+          <th class="chk">✓</th><th>Voce aggiuntiva</th><th class="col-pr">Prezzo (€)</th><th class="col-qt">Q.tà</th><th class="col-un">Unità</th><th class="col-sb">Subtotale</th><th style="width:28px"></th>
+        </tr></thead><tbody id="f_extra_body"></tbody></table>
+        <button class="add-row-btn" onclick="addRow('f_extra')">＋ Aggiungi voce aggiuntiva</button>
       </div>
       <div class="regime-section" id="sec-semplificato">
         <div class="grid-2">
@@ -210,6 +221,10 @@ textarea { resize:vertical; min-height:60px; }
           <div><div class="price-box"><div class="plbl">Canone contabilità semplificata</div><div class="pval" id="s_disp">€ 1.360,00 + IVA</div><div class="pnote">≈ € <span id="s_mese">113,33</span>/mese</div></div></div>
         </div>
         <p style="font-size:12px;color:#777;margin-top:10px;"><strong>Include:</strong> Registrazione documenti, IVA periodica, Modello Unico, Prima nota.</p>
+        <table class="svc-table" style="margin-top:10px;"><thead><tr>
+          <th class="chk">✓</th><th>Voce aggiuntiva</th><th class="col-pr">Prezzo (€)</th><th class="col-qt">Q.tà</th><th class="col-un">Unità</th><th class="col-sb">Subtotale</th><th style="width:28px"></th>
+        </tr></thead><tbody id="s_extra_body"></tbody></table>
+        <button class="add-row-btn" onclick="addRow('s_extra')">＋ Aggiungi voce aggiuntiva</button>
       </div>
       <div class="regime-section" id="sec-ordinario">
         <div class="grid-3">
@@ -226,6 +241,10 @@ textarea { resize:vertical; min-height:60px; }
           <div><label>Bilancio civilistico (€)</label><input type="number" id="o_bil" value="600" step="10" oninput="updateTotals()" /></div>
           <div><label>Deposito bilancio (€)</label><input type="number" id="o_dep" value="300" step="10" oninput="updateTotals()" /></div>
         </div>
+        <table class="svc-table" style="margin-top:12px;"><thead><tr>
+          <th class="chk">✓</th><th>Voce aggiuntiva</th><th class="col-pr">Prezzo (€)</th><th class="col-qt">Q.tà</th><th class="col-un">Unità</th><th class="col-sb">Subtotale</th><th style="width:28px"></th>
+        </tr></thead><tbody id="o_extra_body"></tbody></table>
+        <button class="add-row-btn" onclick="addRow('o_extra')">＋ Aggiungi voce aggiuntiva</button>
       </div>
     </div>
   </div>
@@ -429,6 +448,76 @@ textarea { resize:vertical; min-height:60px; }
     </div>
   </div>
 
+  <!-- FINANZA AGEVOLATA -->
+  <div class="card">
+    <div class="card-header teal">
+      <span>Finanza Agevolata</span>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:normal;text-transform:none;cursor:pointer;">
+          <input type="checkbox" id="finanza_on" onchange="toggleSez('finanza')" style="width:auto;accent-color:#80CBC4;" />
+          Mostra nell'offerta
+        </label>
+        <label id="finanza_totale_lbl" style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:normal;text-transform:none;cursor:pointer;background:rgba(255,213,79,.2);padding:3px 9px;border-radius:11px;border:1px solid rgba(255,213,79,.7);opacity:.45;pointer-events:none;" title="Includi nel totale annuo">
+          <input type="checkbox" id="finanza_totale" onchange="updateTotals()" style="width:auto;accent-color:#F9A825;" />
+          Nel totale
+        </label>
+      </div>
+    </div>
+    <div class="card-body">
+      <table class="svc-table" id="finanza_tbl">
+        <thead><tr>
+          <th class="chk">✓</th><th>Servizio</th>
+          <th class="col-pr">Prezzo (€)</th><th class="col-qt">Q.tà</th>
+          <th class="col-un">Unità</th><th class="col-no">Note</th>
+          <th class="col-sb">Subtotale</th><th style="width:28px"></th>
+        </tr></thead>
+        <tbody id="finanza_body">
+          <tr class="svc-row" data-sec="finanza">
+            <td class="chk"><input type="checkbox" class="svc-chk" onchange="updateTotals()"></td>
+            <td class="col-nm">Accesso piattaforma Finanza Agevolata</td>
+            <td class="col-pr"><input type="number" class="svc-pr" value="500" min="0" step="10" oninput="updateTotals()"></td>
+            <td class="col-qt"><input type="number" class="svc-qt" value="1" min="0" max="1" oninput="updateTotals()"></td>
+            <td class="col-un">Anno</td><td class="col-no">Abbonamento</td>
+            <td class="col-sb svc-sb">—</td><td></td>
+          </tr>
+          <tr class="svc-row" data-sec="finanza">
+            <td class="chk"><input type="checkbox" class="svc-chk" onchange="updateTotals()"></td>
+            <td class="col-nm">Consulenza bandi e agevolazioni</td>
+            <td class="col-pr"><input type="number" class="svc-pr" value="80" min="0" step="5" oninput="updateTotals()"></td>
+            <td class="col-qt"><input type="number" class="svc-qt" value="1" min="0" max="999" oninput="updateTotals()"></td>
+            <td class="col-un">Ora</td><td class="col-no"></td>
+            <td class="col-sb svc-sb">—</td><td></td>
+          </tr>
+          <tr class="svc-row" data-sec="finanza">
+            <td class="chk"><input type="checkbox" class="svc-chk" onchange="updateTotals()"></td>
+            <td class="col-nm">Istruttoria pratica agevolazione</td>
+            <td class="col-pr"><input type="number" class="svc-pr" value="300" min="0" step="50" oninput="updateTotals()"></td>
+            <td class="col-qt"><input type="number" class="svc-qt" value="1" min="0" max="99" oninput="updateTotals()"></td>
+            <td class="col-un">Cad.</td><td class="col-no"></td>
+            <td class="col-sb svc-sb">—</td><td></td>
+          </tr>
+          <tr class="svc-row" data-sec="finanza">
+            <td class="chk"><input type="checkbox" class="svc-chk" onchange="updateTotals()"></td>
+            <td class="col-nm">Monitoraggio bandi attivi</td>
+            <td class="col-pr"><input type="number" class="svc-pr" value="200" min="0" step="10" oninput="updateTotals()"></td>
+            <td class="col-qt"><input type="number" class="svc-qt" value="1" min="0" max="1" oninput="updateTotals()"></td>
+            <td class="col-un">Anno</td><td class="col-no"></td>
+            <td class="col-sb svc-sb">—</td><td></td>
+          </tr>
+          <tr class="svc-row" data-sec="finanza">
+            <td class="chk"><input type="checkbox" class="svc-chk" onchange="updateTotals()"></td>
+            <td class="col-nm">Rendicontazione e collaudo</td>
+            <td class="col-pr"><input type="number" class="svc-pr" value="500" min="0" step="50" oninput="updateTotals()"></td>
+            <td class="col-qt"><input type="number" class="svc-qt" value="1" min="0" max="99" oninput="updateTotals()"></td>
+            <td class="col-un">Cad.</td><td class="col-no"></td>
+            <td class="col-sb svc-sb">—</td><td></td>
+          </tr>
+        </tbody>
+      </table>
+      <button class="add-row-btn" onclick="addRow('finanza')">＋ Aggiungi servizio personalizzato</button>
+      <div class="sec-total">Stima finanza agevolata: <strong id="finanza_tot">€ 0,00</strong> + IVA</div>
+    </div>
+  </div>
   <!-- NOTE -->
   <div class="card">
     <div class="card-header">Note aggiuntive</div>
@@ -463,7 +552,7 @@ textarea { resize:vertical; min-height:60px; }
       <table class="offers-table">
         <thead><tr>
           <th>Data</th><th>Cliente</th><th>Settore</th><th>Regime</th>
-          <th>Totale</th><th>Stato</th><th>Azioni</th>
+          <th>Totale</th><th>Stato</th><th>Azioni</th><th></th>
         </tr></thead>
         <tbody id="offers-tbody">
           <tr><td colspan="7" style="text-align:center;color:#aaa;padding:20px;">Nessuna offerta salvata ancora.</td></tr>
@@ -618,11 +707,19 @@ function updateTotals() {
          + (parseFloat(document.getElementById('o_bil').value)||0)
          + (parseFloat(document.getElementById('o_dep').value)||0);
   }
+  const extraSec = {forfettario:'f_extra', semplificato:'s_extra', ordinario:'o_extra'}[currentRegime];
+  const extraTot = calcSvc(extraSec);
+  base += extraTot;
+
   const lOn = document.getElementById('lavoro_on').checked;
   const pOn = document.getElementById('pratiche_on').checked;
+  const fOn = document.getElementById('finanza_on').checked;
   const lTotale = lOn && document.getElementById('lavoro_totale').checked;
   const pTotale = pOn && document.getElementById('pratiche_totale').checked;
-  const grand = base + (lTotale ? lTot : 0) + (pTotale ? pTot : 0);
+  const fTotale = fOn && document.getElementById('finanza_totale').checked;
+  const fTot = calcSvc('finanza');
+  document.getElementById('finanza_tot').textContent = '€ ' + fmt(fTot);
+  const grand = base + (lTotale ? lTot : 0) + (pTotale ? pTot : 0) + (fTotale ? fTot : 0);
   document.getElementById('grand_tot').textContent = '€ ' + fmt(grand);
 }
 
@@ -646,10 +743,15 @@ function collectOffer() {
     return rows;
   }
 
+  const fOn2    = document.getElementById('finanza_on').checked;
   const lTotale = lOn && document.getElementById('lavoro_totale').checked;
   const pTotale = pOn && document.getElementById('pratiche_totale').checked;
-  const lavoro   = lOn ? svcRows('lavoro')   : [];
-  const pratiche = pOn ? svcRows('pratiche') : [];
+  const fTotale2 = fOn2 && document.getElementById('finanza_totale').checked;
+  const lavoro   = lOn  ? svcRows('lavoro')   : [];
+  const pratiche = pOn  ? svcRows('pratiche') : [];
+  const finanza  = fOn2 ? svcRows('finanza')  : [];
+  const extraSec2 = {forfettario:'f_extra', semplificato:'s_extra', ordinario:'o_extra'}[currentRegime];
+  const extraRows = svcRows(extraSec2);
 
   let base=0, contab={};
   if (currentRegime==='forfettario') {
@@ -668,7 +770,9 @@ function collectOffer() {
   }
   const lTot = lavoro.reduce((s,r)=>s+r.sub,0);
   const pTot = pratiche.reduce((s,r)=>s+r.sub,0);
-  const grand = base + (lTotale ? lTot : 0) + (pTotale ? pTot : 0);
+  const extraTot2 = extraRows.reduce((s,r)=>s+r.sub,0);
+  const fTot2 = finanza.reduce((s,r)=>s+r.sub,0);
+  const grand = base + extraTot2 + (lTotale ? lTot : 0) + (pTotale ? pTot : 0) + (fTotale2 ? fTot2 : 0);
 
   return {
     ragione_sociale: v('ragione_sociale'),
@@ -683,7 +787,7 @@ function collectOffer() {
     regime: currentRegime,
     totale_annuo: grand,
     stato: 'bozza',
-    offer_json: { regime: currentRegime, contab, lavoro, lavoro_in_totale: lTotale, pratiche, pratiche_in_totale: pTotale, note: v('note'), grand },
+    offer_json: { regime: currentRegime, contab, extra: extraRows, lavoro, lavoro_in_totale: lTotale, pratiche, pratiche_in_totale: pTotale, finanza, finanza_in_totale: fTotale2, note: v('note'), grand },
   };
 }
 
@@ -709,6 +813,124 @@ async function saveOffer() {
   }
 }
 
+
+// ─── LOAD OFFER INTO FORM ─────────────────────────────────────
+async function loadOfferIntoForm(id) {
+  const url = document.getElementById('api_url').value.trim().replace(/\/$/, '');
+  try {
+    const r = await fetch(url + '/api/offerte/' + id);
+    if (!r.ok) throw new Error('Offerta non trovata');
+    const o = await r.json();
+    const oj = o.offer_json;
+    // Campi base
+    ['ragione_sociale','telefono','indirizzo','cap_citta','piva_cf','referente','settore'].forEach(f => {
+      const el = document.getElementById(f); if (el) el.value = o[f] || '';
+    });
+    const dp = document.getElementById('data_offerta');
+    dp.value = o.data_offerta ? o.data_offerta.split('T')[0] : '';
+    document.getElementById('passaggio_studio').checked = o.passaggio_studio || false;
+    document.getElementById('note').value = oj.note || '';
+    // Regime e contab
+    setRegime(o.regime || 'forfettario');
+    if (o.regime === 'forfettario') {
+      document.getElementById('f_canone').value = oj.contab.canone || 660;
+    } else if (o.regime === 'semplificato') {
+      document.getElementById('s_canone').value = oj.contab.canone || 1360;
+    } else {
+      if (oj.contab.tipo) document.getElementById('o_tipo').value = oj.contab.tipo;
+      document.getElementById('o_mens').value = oj.contab.mens || 208;
+      document.getElementById('o_ann').value  = oj.contab.ann  || 2500;
+      document.getElementById('o_ass').value  = oj.contab.ass  || 350;
+      document.getElementById('o_bil').value  = oj.contab.bil  || 600;
+      document.getElementById('o_dep').value  = oj.contab.dep  || 300;
+    }
+    // Ripristina sezione helper
+    function restoreSvc(sec, savedRows, inTotale) {
+      const onEl = document.getElementById(sec+'_on');
+      if (!onEl) return;
+      onEl.checked = !!(savedRows && savedRows.length);
+      toggleSez(sec);
+      if (savedRows && savedRows.length) {
+        document.getElementById(sec+'_totale').checked = inTotale || false;
+        document.querySelectorAll('tr.svc-row[data-sec="'+sec+'"]').forEach(row=>{
+          if (!row.dataset.custom) row.querySelector('.svc-chk').checked = false;
+        });
+        document.querySelectorAll('tr.svc-row[data-sec="'+sec+'"][data-custom]').forEach(r=>r.remove());
+        savedRows.forEach(sr => {
+          let found = false;
+          document.querySelectorAll('tr.svc-row[data-sec="'+sec+'"]:not([data-custom])').forEach(row => {
+            if (row.cells[1].textContent.trim() === sr.name) {
+              found = true;
+              row.querySelector('.svc-chk').checked = true;
+              row.querySelector('.svc-pr').value = sr.pr;
+              row.querySelector('.svc-qt').value = sr.qt;
+            }
+          });
+          if (!found) {
+            const tbody = document.getElementById(sec+'_body');
+            const tr = document.createElement('tr');
+            tr.className = 'svc-row'; tr.dataset.sec = sec; tr.dataset.custom = '1';
+            const uOpts = ['Cad.','Anno','Mese','Ora'].map(u=>`<option${u===sr.unit?' selected':''}>${u}</option>`).join('');
+            tr.innerHTML = `<td class="chk"><input type="checkbox" class="svc-chk" checked onchange="updateTotals()"></td>
+              <td class="col-nm"><input type="text" class="svc-name" value="${sr.name}" style="width:100%;border:1px dashed #C0C8D8;padding:5px 7px;font-size:13px;background:white;border-radius:4px;"></td>
+              <td class="col-pr"><input type="number" class="svc-pr" value="${sr.pr}" min="0" step="10" oninput="updateTotals()"></td>
+              <td class="col-qt"><input type="number" class="svc-qt" value="${sr.qt}" min="0" oninput="updateTotals()"></td>
+              <td class="col-un"><select class="svc-un" style="padding:4px 5px;font-size:12px;width:auto;min-width:55px;">${uOpts}</select></td>
+              <td class="col-no"></td><td class="col-sb svc-sb">€ ${fmt(sr.pr*sr.qt)}</td>
+              <td><button class="del-btn" onclick="this.closest('tr').remove();updateTotals();">✕</button></td>`;
+            tbody.appendChild(tr);
+          }
+        });
+      }
+    }
+    // Extra contab
+    const extraSec = {forfettario:'f_extra', semplificato:'s_extra', ordinario:'o_extra'}[o.regime||'forfettario'];
+    if (extraSec && oj.extra) {
+      document.querySelectorAll('tr.svc-row[data-sec="'+extraSec+'"]').forEach(r=>r.remove());
+      oj.extra.forEach(sr => {
+        const tbody = document.getElementById(extraSec+'_body');
+        const tr = document.createElement('tr');
+        tr.className = 'svc-row'; tr.dataset.sec = extraSec; tr.dataset.custom = '1';
+        const uOpts = ['Cad.','Anno','Mese','Ora'].map(u=>`<option${u===sr.unit?' selected':''}>${u}</option>`).join('');
+        tr.innerHTML = `<td class="chk"><input type="checkbox" class="svc-chk" checked onchange="updateTotals()"></td>
+          <td class="col-nm"><input type="text" class="svc-name" value="${sr.name}" style="width:100%;border:1px dashed #C0C8D8;padding:5px 7px;font-size:13px;background:white;border-radius:4px;"></td>
+          <td class="col-pr"><input type="number" class="svc-pr" value="${sr.pr}" min="0" step="10" oninput="updateTotals()"></td>
+          <td class="col-qt"><input type="number" class="svc-qt" value="${sr.qt}" min="0" oninput="updateTotals()"></td>
+          <td class="col-un"><select class="svc-un" style="padding:4px 5px;font-size:12px;width:auto;min-width:55px;">${uOpts}</select></td>
+          <td class="col-sb svc-sb">€ ${fmt(sr.pr*sr.qt)}</td>
+          <td><button class="del-btn" onclick="this.closest('tr').remove();updateTotals();">✕</button></td>`;
+        tbody.appendChild(tr);
+      });
+    }
+    restoreSvc('lavoro',  oj.lavoro,  oj.lavoro_in_totale);
+    restoreSvc('pratiche',oj.pratiche,oj.pratiche_in_totale);
+    restoreSvc('finanza', oj.finanza, oj.finanza_in_totale);
+    updateTotals();
+    window.scrollTo({top:0, behavior:'smooth'});
+    document.getElementById('preview-area').style.display='none';
+    alert('✓ Offerta #'+id+' caricata nel modulo. Modifica e usa "Salva nel Database" per aggiornare.');
+  } catch(e) { alert('Errore caricamento: ' + e.message); }
+}
+
+// ─── REPRINT FROM DB ──────────────────────────────────────────
+async function reprintOffer(id) {
+  const url = document.getElementById('api_url').value.trim().replace(/\/$/, '');
+  try {
+    const r = await fetch(url + '/api/offerte/' + id);
+    if (!r.ok) throw new Error();
+    const o = await r.json();
+    // Costruisce l'oggetto nel formato atteso da renderPreview
+    const merged = {
+      ragione_sociale: o.ragione_sociale, telefono: o.telefono,
+      indirizzo: o.indirizzo, cap_citta: o.cap_citta, piva_cf: o.piva_cf,
+      referente: o.referente, settore: o.settore,
+      data_offerta: o.data_offerta ? o.data_offerta.split('T')[0] : '',
+      passaggio_studio: o.passaggio_studio, regime: o.regime,
+      totale_annuo: o.totale_annuo, offer_json: o.offer_json,
+    };
+    renderPreview(merged);
+  } catch(e) { alert('Errore ristampa: ' + e.message); }
+}
 // ─── LOAD OFFERS ──────────────────────────────────────────────
 async function loadOffers() {
   const url = document.getElementById('api_url').value.trim().replace(/\/$/, '');
@@ -737,6 +959,10 @@ async function loadOffers() {
         <td class="action-btns">
           <select style="font-size:11px;" onchange="changeStato(${o.id}, this.value)">${opts}</select>
           <button class="btn-del-sm" onclick="deleteOffer(${o.id})">✕</button>
+        </td>
+        <td style="white-space:nowrap;">
+          <button class="btn-edit-sm" onclick="loadOfferIntoForm(${o.id})" title="Carica nel modulo per modificare">✏ Modifica</button>
+          <button class="btn-reprint-sm" style="margin-left:4px;" onclick="reprintOffer(${o.id})" title="Genera anteprima da offerta salvata">🖨 Ristampa</button>
         </td>
       </tr>`;
     }).join('');
@@ -768,8 +994,9 @@ function regimeLabel() {
   return {forfettario:'Regime Forfettario — Persona Fisica', semplificato:'Ditta Individuale / Soc. Persone — Contabilità Semplificata', ordinario:'Contabilità Ordinaria — SRL / Ditta Individuale / Soc. Persone'}[currentRegime];
 }
 
-function generatePreview() {
-  const o = collectOffer();
+function generatePreview() { renderPreview(collectOffer()); }
+
+function renderPreview(o) {
   const rs      = o.ragione_sociale || '_______________';
   const refDisp = (o.referente || rs) + (o.telefono ? ' | Tel. ' + o.telefono : '');
   let html = '';
@@ -861,8 +1088,25 @@ function generatePreview() {
     <div class="total-bar purple"><span>${pInTot?'Subtotale pratiche varie':'Stima pratiche varie (a richiesta)'}</span><span class="tv">${pTot>0?'€ '+fmt(pTot):'Da preventivare'}</span></div>`;
   }
 
+  // Extra contabilità
+  if (o.offer_json.extra && o.offer_json.extra.length) {
+    const eRows = o.offer_json.extra.map(r=>`<tr><td>${r.name}</td><td style="text-align:right">€ ${fmt(r.pr)}</td><td style="text-align:center">${r.qt}</td><td>${r.unit}</td><td style="text-align:right"><strong>€ ${fmt(r.sub)}</strong></td></tr>`).join('');
+    html += `<div class="sec-bar blue">SERVIZI CONTABILI AGGIUNTIVI</div>
+    <table class="ptbl"><tr><th>Voce</th><th style="text-align:right">Prezzo</th><th style="text-align:center">Q.tà</th><th>Unità</th><th style="text-align:right">Subtotale</th></tr>${eRows}</table>`;
+  }
+
+  // Finanza agevolata
+  if (o.offer_json.finanza && o.offer_json.finanza.length) {
+    const fInTot = o.offer_json.finanza_in_totale;
+    const fTot = o.offer_json.finanza.reduce((s,r)=>s+r.sub,0);
+    const fRows = o.offer_json.finanza.map(r=>`<tr><td>${r.name}</td><td style="text-align:right">€ ${fmt(r.pr)}</td><td style="text-align:center">${r.qt}</td><td>${r.unit}</td><td style="text-align:right"><strong>€ ${fmt(r.sub)}</strong></td></tr>`).join('');
+    html += `<div class="sec-bar teal">FINANZA AGEVOLATA${!fInTot?' <span style="font-size:10px;font-weight:normal;background:rgba(255,255,255,.25);padding:2px 9px;border-radius:10px;margin-left:8px;">A richiesta — non nel totale</span>':''}</div>
+    <table class="ptbl"><tr><th>Servizio</th><th style="text-align:right">Prezzo</th><th style="text-align:center">Q.tà</th><th>Unità</th><th style="text-align:right">Subtotale</th></tr>${fRows}</table>
+    <div class="total-bar teal"><span>${fInTot?'Subtotale finanza agevolata':'Stima finanza agevolata (a richiesta)'}</span><span class="tv">€ ${fmt(fTot)}</span></div>`;
+  }
+
   // Riepilogo
-  html += `<div class="sec-bar blue">RIEPILOGO ECONOMICO</div>
+  html += `<div class="sec-bar blue">RIEPILOGO ECONOMICO</div>`
   <div class="total-bar blue" style="font-size:15px;"><span>TOTALE ANNUO STIMATO (IVA esclusa)</span><span class="tv" style="font-size:20px;">€ ${fmt(o.totale_annuo)}</span></div>`;
 
   if (o.offer_json.note) html += `<div class="sec-bar blue">NOTE</div><p style="font-size:12px;color:#333;margin-top:7px;white-space:pre-line;">${o.offer_json.note}</p>`;
@@ -927,6 +1171,15 @@ window.addEventListener('load',()=>{
 </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
 
 
 
