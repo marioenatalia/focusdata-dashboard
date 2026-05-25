@@ -728,9 +728,10 @@ function updateTotals() {
   const lTotale = lOn && document.getElementById('lavoro_totale').checked;
   const pTotale = pOn && document.getElementById('pratiche_totale').checked;
   const fTotale = fOn && document.getElementById('finanza_totale').checked;
-  const fTot = calcSvc('finanza');
-  document.getElementById('finanza_tot').textContent = '€ ' + fmt(fTot);
-  const grand = base + (lTotale ? lTot : 0) + (pTotale ? pTot : 0) + (fTotale ? fTot : 0);
+  // Finanza agevolata: canone singolo (non usa calcSvc — non ci sono righe svc-row)
+  const fCanone = parseFloat(document.getElementById('finanza_canone').value) || 0;
+  document.getElementById('finanza_disp').textContent = '€ ' + fmt(fCanone) + ' + IVA';
+  const grand = base + (lTotale ? lTot : 0) + (pTotale ? pTot : 0) + (fTotale ? fCanone : 0);
   document.getElementById('grand_tot').textContent = '€ ' + fmt(grand);
 }
 
