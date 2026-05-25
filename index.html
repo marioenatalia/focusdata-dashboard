@@ -464,58 +464,23 @@ textarea { resize:vertical; min-height:60px; }
       </div>
     </div>
     <div class="card-body">
-      <table class="svc-table" id="finanza_tbl">
-        <thead><tr>
-          <th class="chk">✓</th><th>Servizio</th>
-          <th class="col-pr">Prezzo (€)</th><th class="col-qt">Q.tà</th>
-          <th class="col-un">Unità</th><th class="col-no">Note</th>
-          <th class="col-sb">Subtotale</th><th style="width:28px"></th>
-        </tr></thead>
-        <tbody id="finanza_body">
-          <tr class="svc-row" data-sec="finanza">
-            <td class="chk"><input type="checkbox" class="svc-chk" onchange="updateTotals()"></td>
-            <td class="col-nm">Accesso piattaforma Finanza Agevolata</td>
-            <td class="col-pr"><input type="number" class="svc-pr" value="500" min="0" step="10" oninput="updateTotals()"></td>
-            <td class="col-qt"><input type="number" class="svc-qt" value="1" min="0" max="1" oninput="updateTotals()"></td>
-            <td class="col-un">Anno</td><td class="col-no">Abbonamento</td>
-            <td class="col-sb svc-sb">—</td><td></td>
-          </tr>
-          <tr class="svc-row" data-sec="finanza">
-            <td class="chk"><input type="checkbox" class="svc-chk" onchange="updateTotals()"></td>
-            <td class="col-nm">Consulenza bandi e agevolazioni</td>
-            <td class="col-pr"><input type="number" class="svc-pr" value="80" min="0" step="5" oninput="updateTotals()"></td>
-            <td class="col-qt"><input type="number" class="svc-qt" value="1" min="0" max="999" oninput="updateTotals()"></td>
-            <td class="col-un">Ora</td><td class="col-no"></td>
-            <td class="col-sb svc-sb">—</td><td></td>
-          </tr>
-          <tr class="svc-row" data-sec="finanza">
-            <td class="chk"><input type="checkbox" class="svc-chk" onchange="updateTotals()"></td>
-            <td class="col-nm">Istruttoria pratica agevolazione</td>
-            <td class="col-pr"><input type="number" class="svc-pr" value="300" min="0" step="50" oninput="updateTotals()"></td>
-            <td class="col-qt"><input type="number" class="svc-qt" value="1" min="0" max="99" oninput="updateTotals()"></td>
-            <td class="col-un">Cad.</td><td class="col-no"></td>
-            <td class="col-sb svc-sb">—</td><td></td>
-          </tr>
-          <tr class="svc-row" data-sec="finanza">
-            <td class="chk"><input type="checkbox" class="svc-chk" onchange="updateTotals()"></td>
-            <td class="col-nm">Monitoraggio bandi attivi</td>
-            <td class="col-pr"><input type="number" class="svc-pr" value="200" min="0" step="10" oninput="updateTotals()"></td>
-            <td class="col-qt"><input type="number" class="svc-qt" value="1" min="0" max="1" oninput="updateTotals()"></td>
-            <td class="col-un">Anno</td><td class="col-no"></td>
-            <td class="col-sb svc-sb">—</td><td></td>
-          </tr>
-          <tr class="svc-row" data-sec="finanza">
-            <td class="chk"><input type="checkbox" class="svc-chk" onchange="updateTotals()"></td>
-            <td class="col-nm">Rendicontazione e collaudo</td>
-            <td class="col-pr"><input type="number" class="svc-pr" value="500" min="0" step="50" oninput="updateTotals()"></td>
-            <td class="col-qt"><input type="number" class="svc-qt" value="1" min="0" max="99" oninput="updateTotals()"></td>
-            <td class="col-un">Cad.</td><td class="col-no"></td>
-            <td class="col-sb svc-sb">—</td><td></td>
-          </tr>
-        </tbody>
-      </table>
-      <button class="add-row-btn" onclick="addRow('finanza')">＋ Aggiungi servizio personalizzato</button>
-      <div class="sec-total">Stima finanza agevolata: <strong id="finanza_tot">€ 0,00</strong> + IVA</div>
+      <div class="grid-2">
+        <div>
+          <label>Canone annuale (€ + IVA)</label>
+          <input type="number" id="finanza_canone" value="300" step="10" oninput="updateTotals()" />
+        </div>
+        <div>
+          <div class="price-box">
+            <div class="plbl">Accesso piattaforma Finanza Agevolata</div>
+            <div class="pval" id="finanza_disp">€ 300,00 + IVA</div>
+            <div class="pnote">Canone annuale tutto compreso</div>
+          </div>
+        </div>
+      </div>
+      <p style="font-size:12px;color:#777;margin-top:10px;">
+        <strong>Include:</strong> Accesso alla piattaforma dedicata alla finanza agevolata, monitoraggio bandi attivi,
+        segnalazione opportunità su misura per il profilo aziendale del cliente, supporto nella valutazione di ammissibilità.
+      </p>
     </div>
   </div>
   <!-- NOTE -->
@@ -749,7 +714,7 @@ function collectOffer() {
   const fTotale2 = fOn2 && document.getElementById('finanza_totale').checked;
   const lavoro   = lOn  ? svcRows('lavoro')   : [];
   const pratiche = pOn  ? svcRows('pratiche') : [];
-  const finanza  = fOn2 ? svcRows('finanza')  : [];
+  const fCanone2 = parseFloat(document.getElementById('finanza_canone').value)||0;
   const extraSec2 = {forfettario:'f_extra', semplificato:'s_extra', ordinario:'o_extra'}[currentRegime];
   const extraRows = svcRows(extraSec2);
 
@@ -771,8 +736,7 @@ function collectOffer() {
   const lTot = lavoro.reduce((s,r)=>s+r.sub,0);
   const pTot = pratiche.reduce((s,r)=>s+r.sub,0);
   const extraTot2 = extraRows.reduce((s,r)=>s+r.sub,0);
-  const fTot2 = finanza.reduce((s,r)=>s+r.sub,0);
-  const grand = base + extraTot2 + (lTotale ? lTot : 0) + (pTotale ? pTot : 0) + (fTotale2 ? fTot2 : 0);
+  const grand = base + extraTot2 + (lTotale ? lTot : 0) + (pTotale ? pTot : 0) + (fTotale2 ? fCanone2 : 0);
 
   return {
     ragione_sociale: v('ragione_sociale'),
@@ -787,7 +751,7 @@ function collectOffer() {
     regime: currentRegime,
     totale_annuo: grand,
     stato: 'bozza',
-    offer_json: { regime: currentRegime, contab, extra: extraRows, lavoro, lavoro_in_totale: lTotale, pratiche, pratiche_in_totale: pTotale, finanza, finanza_in_totale: fTotale2, note: v('note'), grand },
+    offer_json: { regime: currentRegime, contab, extra: extraRows, lavoro, lavoro_in_totale: lTotale, pratiche, pratiche_in_totale: pTotale, finanza_canone: fOn2 ? fCanone2 : 0, finanza_in_totale: fTotale2, note: v('note'), grand },
   };
 }
 
@@ -904,7 +868,13 @@ async function loadOfferIntoForm(id) {
     }
     restoreSvc('lavoro',  oj.lavoro,  oj.lavoro_in_totale);
     restoreSvc('pratiche',oj.pratiche,oj.pratiche_in_totale);
-    restoreSvc('finanza', oj.finanza, oj.finanza_in_totale);
+    // Finanza agevolata — canone singolo
+    if (oj.finanza_canone !== undefined) {
+      document.getElementById('finanza_canone').value = oj.finanza_canone || 300;
+      document.getElementById('finanza_on').checked = oj.finanza_canone > 0;
+      toggleSez('finanza');
+      document.getElementById('finanza_totale').checked = oj.finanza_in_totale || false;
+    }
     updateTotals();
     window.scrollTo({top:0, behavior:'smooth'});
     document.getElementById('preview-area').style.display='none';
@@ -1096,13 +1066,12 @@ function renderPreview(o) {
   }
 
   // Finanza agevolata
-  if (o.offer_json.finanza && o.offer_json.finanza.length) {
+  if (o.offer_json.finanza_canone) {
     const fInTot = o.offer_json.finanza_in_totale;
-    const fTot = o.offer_json.finanza.reduce((s,r)=>s+r.sub,0);
-    const fRows = o.offer_json.finanza.map(r=>`<tr><td>${r.name}</td><td style="text-align:right">€ ${fmt(r.pr)}</td><td style="text-align:center">${r.qt}</td><td>${r.unit}</td><td style="text-align:right"><strong>€ ${fmt(r.sub)}</strong></td></tr>`).join('');
+    const fCanone = o.offer_json.finanza_canone;
     html += `<div class="sec-bar teal">FINANZA AGEVOLATA${!fInTot?' <span style="font-size:10px;font-weight:normal;background:rgba(255,255,255,.25);padding:2px 9px;border-radius:10px;margin-left:8px;">A richiesta — non nel totale</span>':''}</div>
-    <table class="ptbl"><tr><th>Servizio</th><th style="text-align:right">Prezzo</th><th style="text-align:center">Q.tà</th><th>Unità</th><th style="text-align:right">Subtotale</th></tr>${fRows}</table>
-    <div class="total-bar teal"><span>${fInTot?'Subtotale finanza agevolata':'Stima finanza agevolata (a richiesta)'}</span><span class="tv">€ ${fmt(fTot)}</span></div>`;
+    <p style="font-size:12px;color:#333;margin:7px 0 4px;">Accesso alla piattaforma dedicata alla finanza agevolata con monitoraggio bandi attivi, segnalazione opportunità su misura e supporto nella valutazione di ammissibilità.</p>
+    <div class="total-bar teal"><span>${fInTot?'Canone finanza agevolata':'Finanza agevolata (a richiesta)'}</span><span class="tv">€ ${fmt(fCanone)} + IVA / anno</span></div>`;
   }
 
   // Riepilogo
@@ -1171,6 +1140,7 @@ window.addEventListener('load',()=>{
 </script>
 </body>
 </html>
+
 
 
 
