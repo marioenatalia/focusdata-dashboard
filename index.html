@@ -1075,7 +1075,7 @@ function renderPreview(o) {
   }
 
   // Riepilogo
-  html += `<div class="sec-bar blue">RIEPILOGO ECONOMICO</div>`
+  html += `<div class="sec-bar blue">RIEPILOGO ECONOMICO</div>
   <div class="total-bar blue" style="font-size:15px;"><span>TOTALE ANNUO STIMATO (IVA esclusa)</span><span class="tv" style="font-size:20px;">€ ${fmt(o.totale_annuo)}</span></div>`;
 
   if (o.offer_json.note) html += `<div class="sec-bar blue">NOTE</div><p style="font-size:12px;color:#333;margin-top:7px;white-space:pre-line;">${o.offer_json.note}</p>`;
