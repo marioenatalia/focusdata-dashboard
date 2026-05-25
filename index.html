@@ -560,7 +560,7 @@ function setEditMode(id) {
   const btnSave = document.getElementById('btn-salva-db');
   if (id) {
     banner.style.display = 'flex';
-    banner.querySelector('#edit-mode-id').textContent = id;
+    document.getElementById('edit-mode-id').textContent = id;
     btnSave.textContent = '💾 Aggiorna offerta';
     btnSave.classList.remove('btn-green');
     btnSave.classList.add('btn-orange');
