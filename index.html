@@ -101,12 +101,15 @@ textarea { resize:vertical; min-height:60px; }
 .stato-badge { display:inline-block; padding:3px 9px; border-radius:12px; font-size:11px; font-weight:bold; text-transform:uppercase; }
 .stato-bozza     { background:#FFF9C4; color:#F57F17; }
 .stato-inviata   { background:#E3F2FD; color:#1565C0; }
-.stato-accettata { background:#E8F5E9; color:#2E7D32; }
+.stato-accettata { background:#2E7D32; color:#fff; letter-spacing:.4px; }
 .stato-rifiutata { background:#FFEBEE; color:#C62828; }
 .stato-scaduta   { background:#F5F5F5; color:#757575; }
 .offers-table { width:100%; border-collapse:collapse; font-size:13px; }
 .offers-table th { background:#F0F4FA; border:1px solid #C0C8D8; padding:8px 10px; text-align:left; font-size:11px; color:#1F3864; text-transform:uppercase; }
 .offers-table td { border:1px solid #E8ECF4; padding:8px 10px; vertical-align:middle; }
+.offers-table tr.row-accettata td { background:#F1FBF3; }
+.offers-table tr.row-accettata { border-left:4px solid #2E7D32; }
+.flag-accettata { display:inline-block; background:#2E7D32; color:#fff; font-size:10px; font-weight:bold; border-radius:4px; padding:1px 6px; margin-left:6px; vertical-align:middle; letter-spacing:.3px; }
 .offers-table tbody tr:hover td { background:#F5F8FF; }
 .offers-table select { padding:4px 6px; font-size:12px; border:1px solid #C0C8D8; border-radius:4px; background:white; }
 .action-btns { display:flex; gap:5px; }
@@ -982,9 +985,10 @@ async function loadOffers() {
       const dateStr = o.created_at ? new Date(o.created_at).toLocaleDateString('it-IT') : '—';
       const totale = o.totale_annuo ? '€ ' + fmt(o.totale_annuo) : '—';
       const opts = statoOpts.map(s => `<option value="${s}" ${s===o.stato?'selected':''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join('');
-      return `<tr>
+      const isAccettata = o.stato === 'accettata';
+      return `<tr class="${isAccettata ? 'row-accettata' : ''}">
         <td>${dateStr}</td>
-        <td><strong>${o.ragione_sociale}</strong></td>
+        <td><strong>${o.ragione_sociale}</strong>${isAccettata ? '<span class="flag-accettata">✓ CLIENTE</span>' : ''}</td>
         <td style="color:#777;font-size:12px;">${o.settore||'—'}</td>
         <td><span style="background:#EEF3FB;padding:2px 7px;border-radius:10px;font-size:11px;color:#1F3864;">${o.regime}</span></td>
         <td style="font-weight:bold;">${totale}</td>
