@@ -111,6 +111,21 @@ textarea { resize:vertical; min-height:60px; }
 .offers-table tr.row-accettata { border-left:4px solid #2E7D32; }
 .flag-accettata { display:inline-block; background:#2E7D32; color:#fff; font-size:10px; font-weight:bold; border-radius:4px; padding:1px 6px; margin-left:6px; vertical-align:middle; letter-spacing:.3px; }
 .offers-table tbody tr:hover td { background:#F5F8FF; }
+/* ANALYTICS */
+.kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px; margin-bottom:28px; }
+.kpi-card { background:#fff; border:1px solid #D8E3F0; border-radius:10px; padding:16px 18px; text-align:center; }
+.kpi-card .kpi-val { font-size:28px; font-weight:700; line-height:1.1; }
+.kpi-card .kpi-lbl { font-size:11px; color:#888; text-transform:uppercase; letter-spacing:.5px; margin-top:4px; }
+.kpi-card .kpi-sub { font-size:11px; margin-top:3px; }
+.kpi-green .kpi-val { color:#2E7D32; }
+.kpi-blue  .kpi-val { color:#1565C0; }
+.kpi-yellow .kpi-val { color:#E65100; }
+.kpi-red   .kpi-val { color:#C62828; }
+.kpi-dark  .kpi-val { color:#1F3864; }
+.charts-row { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+@media(max-width:640px){ .charts-row { grid-template-columns:1fr; } }
+.chart-box { background:#FAFBFD; border:1px solid #E0E8F5; border-radius:10px; padding:16px; }
+.chart-box h4 { margin:0 0 14px; font-size:13px; color:#1F3864; text-transform:uppercase; letter-spacing:.4px; }
 .offers-table select { padding:4px 6px; font-size:12px; border:1px solid #C0C8D8; border-radius:4px; background:white; }
 .action-btns { display:flex; gap:5px; }
 .action-btns button { padding:4px 9px; font-size:11px; border:none; border-radius:4px; cursor:pointer; font-weight:bold; }
@@ -516,6 +531,50 @@ textarea { resize:vertical; min-height:60px; }
   </div>
 
 </div><!-- /form-area -->
+
+<!-- ANALYTICS -->
+<div class="container" id="stats-area" style="display:none;">
+  <div class="card">
+    <div class="card-header">Riepilogo & Analisi Offerte</div>
+    <div class="card-body">
+      <div class="kpi-grid">
+        <div class="kpi-card kpi-dark">
+          <div class="kpi-val" id="kpi-totale">—</div>
+          <div class="kpi-lbl">Totale offerte</div>
+        </div>
+        <div class="kpi-card kpi-green">
+          <div class="kpi-val" id="kpi-accettate">—</div>
+          <div class="kpi-lbl">Accettate</div>
+          <div class="kpi-sub" id="kpi-pct" style="color:#2E7D32;font-weight:600;"></div>
+        </div>
+        <div class="kpi-card kpi-yellow">
+          <div class="kpi-val" id="kpi-inattesa">—</div>
+          <div class="kpi-lbl">In attesa</div>
+          <div class="kpi-sub" style="color:#aaa;">bozza + inviata</div>
+        </div>
+        <div class="kpi-card kpi-red">
+          <div class="kpi-val" id="kpi-rifiutate">—</div>
+          <div class="kpi-lbl">Perse</div>
+          <div class="kpi-sub" style="color:#aaa;">rifiutate + scadute</div>
+        </div>
+        <div class="kpi-card kpi-blue">
+          <div class="kpi-val" id="kpi-valore" style="font-size:20px;">—</div>
+          <div class="kpi-lbl">Valore accettate/anno</div>
+        </div>
+      </div>
+      <div class="charts-row">
+        <div class="chart-box">
+          <h4>Distribuzione stati</h4>
+          <canvas id="chart-stati" height="220"></canvas>
+        </div>
+        <div class="chart-box">
+          <h4>Valore accettate per regime (€/anno)</h4>
+          <canvas id="chart-regime" height="220"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- OFFERTE SALVATE -->
 <div class="container" id="saved-area" style="display:none;">
@@ -1004,7 +1063,63 @@ async function loadOffers() {
       </tr>`;
     }).join('');
     document.getElementById('saved-area').style.display = 'block';
+    renderStats(rows);
   } catch(e) { console.warn('Load offers:', e); }
+}
+
+// ─── ANALYTICS ────────────────────────────────────────────────
+function renderStats(rows) {
+  if (!rows.length) return;
+  const stati = {};
+  const regimeAcc = {forfettario:0, semplificato:0, ordinario:0};
+  let valAcc = 0;
+  rows.forEach(o => {
+    stati[o.stato] = (stati[o.stato]||0) + 1;
+    if (o.stato === 'accettata') {
+      valAcc += parseFloat(o.totale_annuo)||0;
+      if (regimeAcc[o.regime] !== undefined) regimeAcc[o.regime] += parseFloat(o.totale_annuo)||0;
+    }
+  });
+  const inAttesa = (stati.bozza||0) + (stati.inviata||0);
+  const perse    = (stati.rifiutata||0) + (stati.scaduta||0);
+  const nAcc     = stati.accettata||0;
+  document.getElementById('kpi-totale').textContent    = rows.length;
+  document.getElementById('kpi-accettate').textContent = nAcc;
+  document.getElementById('kpi-inattesa').textContent  = inAttesa;
+  document.getElementById('kpi-rifiutate').textContent = perse;
+  document.getElementById('kpi-valore').textContent    = '€ ' + fmt(valAcc);
+  document.getElementById('kpi-pct').textContent       = Math.round(nAcc/rows.length*100) + '% del totale';
+
+  // Distruggi chart precedenti se esistono
+  if (window._chartStati)  { window._chartStati.destroy();  window._chartStati  = null; }
+  if (window._chartRegime) { window._chartRegime.destroy(); window._chartRegime = null; }
+
+  window._chartStati = new Chart(document.getElementById('chart-stati'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Bozza','Inviata','Accettata','Rifiutata','Scaduta'],
+      datasets: [{ data: [stati.bozza||0, stati.inviata||0, nAcc, stati.rifiutata||0, stati.scaduta||0],
+        backgroundColor: ['#FDD835','#42A5F5','#43A047','#EF5350','#BDBDBD'],
+        borderWidth: 3, borderColor:'#fff' }]
+    },
+    options: { responsive:true, cutout:'62%',
+      plugins:{ legend:{ position:'bottom', labels:{ font:{size:11}, padding:12 } } } }
+  });
+
+  window._chartRegime = new Chart(document.getElementById('chart-regime'), {
+    type: 'bar',
+    data: {
+      labels: ['Forfettario','Semplificato','Ordinario'],
+      datasets: [{ label:'€/anno', data:[regimeAcc.forfettario, regimeAcc.semplificato, regimeAcc.ordinario],
+        backgroundColor:['#42A5F5','#26A69A','#7E57C2'], borderRadius:7, borderSkipped:false }]
+    },
+    options: { responsive:true,
+      plugins:{ legend:{display:false} },
+      scales:{ y:{ beginAtZero:true, ticks:{ callback: v => '€ '+v.toLocaleString('it-IT') }, grid:{color:'#EEF3FB'} },
+               x:{ grid:{display:false} } } }
+  });
+
+  document.getElementById('stats-area').style.display = 'block';
 }
 
 async function changeStato(id, stato) {
@@ -1206,6 +1321,7 @@ window.addEventListener('load',()=>{
   updateTotals();
 });
 </script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 </body>
 </html>
 
