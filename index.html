@@ -122,6 +122,7 @@ textarea { resize:vertical; min-height:60px; }
 .kpi-yellow .kpi-val { color:#E65100; }
 .kpi-red   .kpi-val { color:#C62828; }
 .kpi-dark  .kpi-val { color:#1F3864; }
+.kpi-gray  .kpi-val { color:#666; }
 .charts-row { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
 @media(max-width:640px){ .charts-row { grid-template-columns:1fr; } }
 .chart-box { background:#FAFBFD; border:1px solid #E0E8F5; border-radius:10px; padding:16px; }
@@ -511,6 +512,39 @@ textarea { resize:vertical; min-height:60px; }
     </div>
   </div>
 
+  <!-- REFERENTE / COMMISSIONE -->
+  <div class="card">
+    <div class="card-header">Referente / Commissione</div>
+    <div class="card-body">
+      <div class="grid-2">
+        <div>
+          <label>Tipo referente</label>
+          <select id="ref_tipo" onchange="toggleRefTipo()">
+            <option value="generico">Generico (nessuna commissione)</option>
+            <option value="tipo_b">Tipo B (con commissione)</option>
+          </select>
+        </div>
+        <div id="ref_nome_wrap" style="display:none;">
+          <label>Nome referente</label>
+          <input type="text" id="ref_nome" placeholder="Es. Mario Bianchi" />
+        </div>
+      </div>
+      <div id="ref_comm_wrap" class="grid-2" style="display:none;margin-top:10px;align-items:end;">
+        <div>
+          <label>Commissione (% del totale)</label>
+          <input type="number" id="ref_pct" value="10" min="0" max="100" step="0.5" oninput="updateRefComm()" />
+        </div>
+        <div>
+          <div class="price-box" style="background:#FFF8E1;border-color:#F0C36D;">
+            <div class="plbl">Commissione riconosciuta</div>
+            <div class="pval" id="ref_comm_disp" style="color:#B26A00;">€ 0,00</div>
+            <div class="pnote">Calcolata sul totale annuo dell'offerta</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- GRAND TOTAL -->
   <div class="grand-bar">
     <span>TOTALE ANNUO STIMATO (IVA esclusa)</span>
@@ -593,6 +627,37 @@ textarea { resize:vertical; min-height:60px; }
           <tr><td colspan="7" style="text-align:center;color:#aaa;padding:20px;">Nessuna offerta salvata ancora.</td></tr>
         </tbody>
       </table>
+    </div>
+  </div>
+</div>
+
+<!-- COMMISSIONI REFERENTI (Tipo B) -->
+<div class="container" id="commissioni-area" style="display:none;">
+  <div class="card">
+    <div class="card-header">Commissioni Referenti (Tipo B)</div>
+    <div class="card-body">
+      <div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));">
+        <div class="kpi-card kpi-yellow">
+          <div class="kpi-val" id="comm-da-pagare" style="font-size:22px;">—</div>
+          <div class="kpi-lbl">Da riconoscere</div>
+          <div class="kpi-sub" style="color:#2E7D32;font-weight:600;">solo offerte accettate</div>
+        </div>
+        <div class="kpi-card kpi-dark">
+          <div class="kpi-val" id="comm-referenti">—</div>
+          <div class="kpi-lbl">Referenti tipo B</div>
+        </div>
+        <div class="kpi-card kpi-blue">
+          <div class="kpi-val" id="comm-offerte">—</div>
+          <div class="kpi-lbl">Offerte con referente</div>
+        </div>
+        <div class="kpi-card kpi-gray">
+          <div class="kpi-val" id="comm-potenziale" style="font-size:22px;">—</div>
+          <div class="kpi-lbl">Potenziale (tutte)</div>
+          <div class="kpi-sub" style="color:#888;">incl. offerte non accettate</div>
+        </div>
+      </div>
+      <div id="comm-vuoto" style="text-align:center;color:#aaa;padding:24px;">Nessuna offerta con referente tipo B.</div>
+      <div id="comm-gruppi"></div>
     </div>
   </div>
 </div>
@@ -800,6 +865,25 @@ function updateTotals() {
   document.getElementById('finanza_disp').textContent = '€ ' + fmt(fCanone) + ' + IVA';
   const grand = base + (lTotale ? lTot : 0) + (pTotale ? pTot : 0) + (fTotale ? fCanone : 0);
   document.getElementById('grand_tot').textContent = '€ ' + fmt(grand);
+  window._grandTotal = grand;
+  updateRefComm();
+}
+
+// ─── REFERENTE / COMMISSIONE ──────────────────────────────────
+function toggleRefTipo() {
+  const tipoB = document.getElementById('ref_tipo').value === 'tipo_b';
+  document.getElementById('ref_nome_wrap').style.display = tipoB ? 'block' : 'none';
+  document.getElementById('ref_comm_wrap').style.display = tipoB ? 'grid' : 'none';
+  updateRefComm();
+}
+
+function updateRefComm() {
+  const disp = document.getElementById('ref_comm_disp');
+  if (!disp) return;
+  const tipoB = document.getElementById('ref_tipo').value === 'tipo_b';
+  const pct = parseFloat(document.getElementById('ref_pct').value) || 0;
+  const grand = window._grandTotal || 0;
+  disp.textContent = '€ ' + fmt(tipoB ? grand * pct / 100 : 0);
 }
 
 // ─── COLLECT OFFER DATA ───────────────────────────────────────
@@ -852,6 +936,10 @@ function collectOffer() {
   const extraTot2 = extraRows.reduce((s,r)=>s+r.sub,0);
   const grand = base + extraTot2 + (lTotale ? lTot : 0) + (pTotale ? pTot : 0) + (fTotale2 ? fCanone2 : 0);
 
+  const refTipo = document.getElementById('ref_tipo').value;
+  const refNome = refTipo === 'tipo_b' ? v('ref_nome') : '';
+  const refPct  = refTipo === 'tipo_b' ? (parseFloat(document.getElementById('ref_pct').value) || 0) : null;
+
   return {
     ragione_sociale: v('ragione_sociale'),
     telefono:        v('telefono'),
@@ -865,7 +953,10 @@ function collectOffer() {
     regime: currentRegime,
     totale_annuo: grand,
     stato: 'bozza',
-    offer_json: { regime: currentRegime, contab, extra: extraRows, lavoro, lavoro_in_totale: lTotale, pratiche, pratiche_in_totale: pTotale, finanza_canone: fOn2 ? fCanone2 : 0, finanza_in_totale: fTotale2, note: v('note'), grand },
+    referente_tipo: refTipo,
+    referente_nome: refNome,
+    referente_commissione_pct: refPct,
+    offer_json: { regime: currentRegime, contab, extra: extraRows, lavoro, lavoro_in_totale: lTotale, pratiche, pratiche_in_totale: pTotale, finanza_canone: fOn2 ? fCanone2 : 0, finanza_in_totale: fTotale2, note: v('note'), grand, referente_tipo: refTipo, referente_nome: refNome, referente_commissione_pct: refPct },
   };
 }
 
@@ -997,6 +1088,12 @@ async function loadOfferIntoForm(id) {
       toggleSez('finanza');
       document.getElementById('finanza_totale').checked = oj.finanza_in_totale || false;
     }
+    // Referente / commissione (legge dai campi colonna o dal JSON)
+    const rTipo = o.referente_tipo || oj.referente_tipo || 'generico';
+    document.getElementById('ref_tipo').value = rTipo;
+    document.getElementById('ref_nome').value = o.referente_nome || oj.referente_nome || '';
+    document.getElementById('ref_pct').value  = o.referente_commissione_pct ?? oj.referente_commissione_pct ?? 10;
+    toggleRefTipo();
     updateTotals();
     setEditMode(id);
     window.scrollTo({top:0, behavior:'smooth'});
@@ -1064,7 +1161,73 @@ async function loadOffers() {
     }).join('');
     document.getElementById('saved-area').style.display = 'block';
     renderStats(rows);
+    renderCommissioni(rows);
   } catch(e) { console.warn('Load offers:', e); }
+}
+
+// ─── COMMISSIONI REFERENTI ────────────────────────────────────
+function renderCommissioni(rows) {
+  const area = document.getElementById('commissioni-area');
+  const tipoB = rows.filter(o => (o.referente_tipo === 'tipo_b'));
+  area.style.display = 'block';
+
+  const vuoto  = document.getElementById('comm-vuoto');
+  const gruppi = document.getElementById('comm-gruppi');
+  if (!tipoB.length) {
+    vuoto.style.display = 'block';
+    gruppi.innerHTML = '';
+    document.getElementById('comm-da-pagare').textContent  = '€ 0,00';
+    document.getElementById('comm-referenti').textContent  = '0';
+    document.getElementById('comm-offerte').textContent    = '0';
+    document.getElementById('comm-potenziale').textContent = '€ 0,00';
+    return;
+  }
+  vuoto.style.display = 'none';
+
+  const commOf = o => (parseFloat(o.totale_annuo)||0) * (parseFloat(o.referente_commissione_pct)||0) / 100;
+  let totDaPagare = 0, totPotenziale = 0;
+  const perRef = {};
+  tipoB.forEach(o => {
+    const nome = (o.referente_nome && o.referente_nome.trim()) || '(senza nome)';
+    const c = commOf(o);
+    totPotenziale += c;
+    if (o.stato === 'accettata') totDaPagare += c;
+    (perRef[nome] = perRef[nome] || []).push(o);
+  });
+
+  document.getElementById('comm-da-pagare').textContent  = '€ ' + fmt(totDaPagare);
+  document.getElementById('comm-referenti').textContent  = Object.keys(perRef).length;
+  document.getElementById('comm-offerte').textContent    = tipoB.length;
+  document.getElementById('comm-potenziale').textContent = '€ ' + fmt(totPotenziale);
+
+  const statoBadge = s => `<span class="stato-badge stato-${s}">${s}</span>`;
+  gruppi.innerHTML = Object.keys(perRef).sort().map(nome => {
+    const offs = perRef[nome];
+    const dovuto = offs.filter(o=>o.stato==='accettata').reduce((s,o)=>s+commOf(o),0);
+    const righe = offs.map(o => {
+      const acc = o.stato === 'accettata';
+      return `<tr style="${acc?'background:#F1FBF3;':''}">
+        <td>${o.ragione_sociale||'—'}</td>
+        <td style="text-align:center;">${statoBadge(o.stato)}</td>
+        <td style="text-align:right;">€ ${fmt(o.totale_annuo)}</td>
+        <td style="text-align:center;">${o.referente_commissione_pct||0}%</td>
+        <td style="text-align:right;font-weight:bold;color:${acc?'#2E7D32':'#aaa'};">€ ${fmt(commOf(o))}</td>
+      </tr>`;
+    }).join('');
+    return `<div style="margin-top:18px;border:1px solid #E0E8F5;border-radius:8px;overflow:hidden;">
+      <div style="background:#1F3864;color:#fff;padding:9px 14px;display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-weight:600;">👤 ${nome}</span>
+        <span style="font-size:13px;">Da riconoscere: <strong>€ ${fmt(dovuto)}</strong></span>
+      </div>
+      <table class="offers-table" style="font-size:12px;">
+        <thead><tr>
+          <th>Cliente</th><th style="text-align:center;">Stato</th><th style="text-align:right;">Totale offerta</th>
+          <th style="text-align:center;">%</th><th style="text-align:right;">Commissione</th>
+        </tr></thead>
+        <tbody>${righe}</tbody>
+      </table>
+    </div>`;
+  }).join('');
 }
 
 // ─── ANALYTICS ────────────────────────────────────────────────
@@ -1311,6 +1474,10 @@ function resetForm() {
   });
   document.getElementById('preview-area').style.display='none';
   document.getElementById('data_offerta').value=new Date().toISOString().split('T')[0];
+  document.getElementById('ref_tipo').value='generico';
+  document.getElementById('ref_nome').value='';
+  document.getElementById('ref_pct').value=10;
+  toggleRefTipo();
   setRegime('forfettario');
   setEditMode(null);
 }
