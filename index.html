@@ -1150,7 +1150,6 @@ function generatePreview() { renderPreview(collectOffer()); }
 
 function renderPreview(o) {
   const rs      = o.ragione_sociale || '_______________';
-  const refDisp = (o.referente || rs) + (o.telefono ? ' | Tel. ' + o.telefono : '');
   let html = '';
 
   html += `<div style="text-align:center;margin:0 0 16px;"><img src="data:image/png;base64,${LOGO_B64}" alt="FocusData" style="max-width:100%;height:auto;display:block;margin:0 auto;"></div><div class="doc-hdr"><h2>OFFERTA PROFESSIONALE</h2><p>${regimeLabel()}</p></div>`;
@@ -1160,7 +1159,9 @@ function renderPreview(o) {
       <span class="hi">${o.indirizzo||'_______________'}</span><br>
       <span class="hi">${o.cap_citta||'_______________'}</span><br>
       P.IVA / C.F.: <span class="hi">${o.piva_cf||'_______________'}</span><br>
-      Alla c.a.: <span class="hi">${refDisp}</span>
+      ${o.settore ? 'Settore / Attività: <span class="hi">'+o.settore+'</span><br>' : ''}
+      ${o.telefono ? 'Tel.: <span class="hi">'+o.telefono+'</span><br>' : ''}
+      Alla c.a.: <span class="hi">${o.referente || rs}</span>
     </div></div>
     <div class="doc-cell"><div class="cl">Proponente</div><div class="cv">
       <strong>FOCUSDATA CONSULTING SRL</strong><br>
