@@ -521,12 +521,17 @@ textarea { resize:vertical; min-height:60px; }
           <label>Tipo referente</label>
           <select id="ref_tipo" onchange="toggleRefTipo()">
             <option value="generico">Generico (nessuna commissione)</option>
-            <option value="tipo_b">Tipo B (con commissione)</option>
+            <option value="tipo_b">Segnalatore commerciale (con commissione)</option>
           </select>
         </div>
         <div id="ref_nome_wrap" style="display:none;">
-          <label>Nome referente</label>
-          <input type="text" id="ref_nome" placeholder="Es. Mario Bianchi" />
+          <label>Segnalatore</label>
+          <div style="display:flex;gap:6px;">
+            <select id="ref_segnalatore" onchange="onSegnalatoreChange()" style="flex:1;">
+              <option value="">— seleziona —</option>
+            </select>
+            <button type="button" class="btn btn-gray" style="padding:6px 10px;font-size:12px;white-space:nowrap;" onclick="scrollToAnagrafica()" title="Gestisci anagrafica segnalatori">＋ Nuovo</button>
+          </div>
         </div>
       </div>
       <div id="ref_comm_wrap" class="grid-2" style="display:none;margin-top:10px;align-items:end;">
@@ -631,6 +636,47 @@ textarea { resize:vertical; min-height:60px; }
   </div>
 </div>
 
+<!-- ANAGRAFICA SEGNALATORI -->
+<div class="container" id="segnalatori-area" style="display:none;">
+  <div class="card">
+    <div class="card-header" style="justify-content:space-between;">
+      <span>Anagrafica Segnalatori</span>
+      <button class="btn btn-gray" style="padding:4px 12px;font-size:12px;" onclick="nuovoSegnalatore()">＋ Nuovo segnalatore</button>
+    </div>
+    <div class="card-body">
+      <!-- FORM -->
+      <div id="segn-form" style="display:none;background:#F7F9FC;border:1px solid #D8E3F0;border-radius:8px;padding:16px;margin-bottom:18px;">
+        <div style="font-weight:600;color:#1F3864;margin-bottom:12px;" id="segn-form-title">Nuovo segnalatore</div>
+        <input type="hidden" id="segn_id" />
+        <div class="grid-2">
+          <div><label>Nome / Ragione sociale *</label><input type="text" id="segn_nome" placeholder="Es. Mario Bianchi" /></div>
+          <div><label>Commissione predefinita (%)</label><input type="number" id="segn_pct" value="10" min="0" max="100" step="0.5" /></div>
+          <div><label>Email</label><input type="email" id="segn_email" placeholder="mario.bianchi@email.it" /></div>
+          <div><label>Telefono</label><input type="text" id="segn_telefono" placeholder="333 1234567" /></div>
+          <div><label>P.IVA / Codice Fiscale</label><input type="text" id="segn_piva" placeholder="IT12345678901" /></div>
+          <div><label>IBAN (per pagamento provvigioni)</label><input type="text" id="segn_iban" placeholder="IT60X0542811101000000123456" /></div>
+        </div>
+        <label style="display:flex;align-items:center;gap:7px;margin-top:10px;font-weight:normal;text-transform:none;font-size:13px;cursor:pointer;">
+          <input type="checkbox" id="segn_attivo" checked style="width:auto;" /> Segnalatore attivo
+        </label>
+        <div style="display:flex;gap:8px;margin-top:14px;">
+          <button class="btn btn-green" style="padding:7px 16px;font-size:13px;" onclick="salvaSegnalatore()">💾 Salva</button>
+          <button class="btn btn-gray" style="padding:7px 16px;font-size:13px;" onclick="document.getElementById('segn-form').style.display='none'">✕ Annulla</button>
+        </div>
+      </div>
+      <!-- TABELLA -->
+      <div id="segn-vuoto" style="text-align:center;color:#aaa;padding:20px;">Nessun segnalatore in anagrafica. Creane uno con "＋ Nuovo segnalatore".</div>
+      <table class="offers-table" id="segn-table" style="display:none;">
+        <thead><tr>
+          <th>Nome</th><th>Contatti</th><th style="text-align:center;">%</th>
+          <th style="text-align:center;">Offerte</th><th style="text-align:right;">Maturate</th><th>Azioni</th>
+        </tr></thead>
+        <tbody id="segn-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <!-- COMMISSIONI REFERENTI (Tipo B) -->
 <div class="container" id="commissioni-area" style="display:none;">
   <div class="card">
@@ -720,6 +766,7 @@ async function testApi() {
       dot.className='dot ok'; lbl.textContent='Connesso';
       msg.textContent='✓ API raggiungibile';
       loadOffers();
+      loadSegnalatori();
     } else throw new Error('HTTP ' + r.status);
   } catch(e) {
     dot.className='dot err'; lbl.textContent='Errore connessione';
@@ -937,7 +984,10 @@ function collectOffer() {
   const grand = base + extraTot2 + (lTotale ? lTot : 0) + (pTotale ? pTot : 0) + (fTotale2 ? fCanone2 : 0);
 
   const refTipo = document.getElementById('ref_tipo').value;
-  const refNome = refTipo === 'tipo_b' ? v('ref_nome') : '';
+  const segSel  = document.getElementById('ref_segnalatore');
+  const segId   = refTipo === 'tipo_b' && segSel.value ? parseInt(segSel.value) : null;
+  const refNome = refTipo === 'tipo_b' && segSel.selectedIndex > 0
+                  ? segSel.options[segSel.selectedIndex].dataset.nome : '';
   const refPct  = refTipo === 'tipo_b' ? (parseFloat(document.getElementById('ref_pct').value) || 0) : null;
 
   return {
@@ -956,6 +1006,7 @@ function collectOffer() {
     referente_tipo: refTipo,
     referente_nome: refNome,
     referente_commissione_pct: refPct,
+    segnalatore_id: segId,
     offer_json: { regime: currentRegime, contab, extra: extraRows, lavoro, lavoro_in_totale: lTotale, pratiche, pratiche_in_totale: pTotale, finanza_canone: fOn2 ? fCanone2 : 0, finanza_in_totale: fTotale2, note: v('note'), grand, referente_tipo: refTipo, referente_nome: refNome, referente_commissione_pct: refPct },
   };
 }
@@ -1091,8 +1142,10 @@ async function loadOfferIntoForm(id) {
     // Referente / commissione (legge dai campi colonna o dal JSON)
     const rTipo = o.referente_tipo || oj.referente_tipo || 'generico';
     document.getElementById('ref_tipo').value = rTipo;
-    document.getElementById('ref_nome').value = o.referente_nome || oj.referente_nome || '';
     document.getElementById('ref_pct').value  = o.referente_commissione_pct ?? oj.referente_commissione_pct ?? 10;
+    if (!document.getElementById('ref_segnalatore').options.length ||
+        document.getElementById('ref_segnalatore').options.length === 1) await loadSegnalatori();
+    document.getElementById('ref_segnalatore').value = o.segnalatore_id || '';
     toggleRefTipo();
     updateTotals();
     setEditMode(id);
@@ -1214,10 +1267,12 @@ function renderCommissioni(rows) {
         <td style="text-align:right;font-weight:bold;color:${acc?'#2E7D32':'#aaa'};">€ ${fmt(commOf(o))}</td>
       </tr>`;
     }).join('');
+    const segId = (offs.find(o => o.segnalatore_id) || {}).segnalatore_id;
     return `<div style="margin-top:18px;border:1px solid #E0E8F5;border-radius:8px;overflow:hidden;">
-      <div style="background:#1F3864;color:#fff;padding:9px 14px;display:flex;justify-content:space-between;align-items:center;">
+      <div style="background:#1F3864;color:#fff;padding:9px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;">
         <span style="font-weight:600;">👤 ${nome}</span>
-        <span style="font-size:13px;">Da riconoscere: <strong>€ ${fmt(dovuto)}</strong></span>
+        <span style="font-size:13px;margin-left:auto;">Da riconoscere: <strong>€ ${fmt(dovuto)}</strong></span>
+        ${segId ? `<button class="btn-reprint-sm" onclick="schedaSegnalatore(${segId})" title="Scheda stampabile">📄 Scheda</button>` : ''}
       </div>
       <table class="offers-table" style="font-size:12px;">
         <thead><tr>
@@ -1283,6 +1338,199 @@ function renderStats(rows) {
   });
 
   document.getElementById('stats-area').style.display = 'block';
+}
+
+// ─── SEGNALATORI: anagrafica ──────────────────────────────────
+function apiBase() { return document.getElementById('api_url').value.trim().replace(/\/$/, ''); }
+let segnalatoriCache = [];
+
+async function loadSegnalatori() {
+  const url = apiBase();
+  if (!url) return;
+  try {
+    const r = await fetch(url + '/api/segnalatori');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    segnalatoriCache = await r.json();
+  } catch(e) { console.warn('Segnalatori:', e.message); return; }
+
+  document.getElementById('segnalatori-area').style.display = 'block';
+
+  // Menu a tendina nell'offerta (solo attivi)
+  const sel = document.getElementById('ref_segnalatore');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— seleziona —</option>' +
+    segnalatoriCache.filter(s => s.attivo).map(s =>
+      `<option value="${s.id}" data-nome="${esc(s.nome)}" data-pct="${s.commissione_pct ?? 10}">${esc(s.nome)}</option>`
+    ).join('');
+  sel.value = cur;
+
+  // Tabella anagrafica
+  const tb = document.getElementById('segn-tbody');
+  const tab = document.getElementById('segn-table');
+  const vuoto = document.getElementById('segn-vuoto');
+  if (!segnalatoriCache.length) { tab.style.display='none'; vuoto.style.display='block'; return; }
+  tab.style.display=''; vuoto.style.display='none';
+  tb.innerHTML = segnalatoriCache.map(s => {
+    const contatti = [s.email, s.telefono].filter(Boolean).join('<br>') || '—';
+    return `<tr style="${s.attivo?'':'opacity:.5;'}">
+      <td><strong>${esc(s.nome)}</strong>${s.attivo?'':' <span style="font-size:10px;color:#999;">(non attivo)</span>'}</td>
+      <td style="font-size:12px;color:#666;">${contatti}</td>
+      <td style="text-align:center;">${s.commissione_pct ?? 10}%</td>
+      <td style="text-align:center;">${s.n_offerte} <span style="color:#2E7D32;font-size:11px;">(${s.n_accettate} acc.)</span></td>
+      <td style="text-align:right;font-weight:bold;color:#2E7D32;">€ ${fmt(s.commissioni_maturate)}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn-edit-sm" onclick="editSegnalatore(${s.id})">✏ Modifica</button>
+        <button class="btn-reprint-sm" style="margin-left:4px;" onclick="schedaSegnalatore(${s.id})" title="Scheda stampabile">📄 Scheda</button>
+        <button class="btn-del-sm" style="margin-left:4px;" onclick="deleteSegnalatore(${s.id})">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function esc(t) { return String(t==null?'':t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function onSegnalatoreChange() {
+  const sel = document.getElementById('ref_segnalatore');
+  if (sel.selectedIndex > 0) {
+    const pct = sel.options[sel.selectedIndex].dataset.pct;
+    if (pct != null) document.getElementById('ref_pct').value = pct;
+  }
+  updateRefComm();
+}
+
+function scrollToAnagrafica() {
+  const a = document.getElementById('segnalatori-area');
+  if (a.style.display === 'none') { alert('Collegati prima al database ("Test connessione") per gestire l\'anagrafica segnalatori.'); return; }
+  a.scrollIntoView({behavior:'smooth'});
+  nuovoSegnalatore();
+}
+
+function nuovoSegnalatore() {
+  document.getElementById('segn-form').style.display = 'block';
+  document.getElementById('segn-form-title').textContent = 'Nuovo segnalatore';
+  ['segn_id','segn_nome','segn_email','segn_telefono','segn_piva','segn_iban'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('segn_pct').value = 10;
+  document.getElementById('segn_attivo').checked = true;
+  document.getElementById('segn_nome').focus();
+}
+
+function editSegnalatore(id) {
+  const s = segnalatoriCache.find(x => x.id === id);
+  if (!s) return;
+  document.getElementById('segn-form').style.display = 'block';
+  document.getElementById('segn-form-title').textContent = 'Modifica segnalatore #' + id;
+  document.getElementById('segn_id').value       = s.id;
+  document.getElementById('segn_nome').value     = s.nome || '';
+  document.getElementById('segn_email').value    = s.email || '';
+  document.getElementById('segn_telefono').value = s.telefono || '';
+  document.getElementById('segn_pct').value      = s.commissione_pct ?? 10;
+  document.getElementById('segn_piva').value     = s.piva_cf || '';
+  document.getElementById('segn_iban').value     = s.iban || '';
+  document.getElementById('segn_attivo').checked = !!s.attivo;
+  document.getElementById('segn-form').scrollIntoView({behavior:'smooth'});
+}
+
+async function salvaSegnalatore() {
+  const url = apiBase();
+  const id  = document.getElementById('segn_id').value;
+  const dati = {
+    nome:            document.getElementById('segn_nome').value.trim(),
+    email:           document.getElementById('segn_email').value.trim(),
+    telefono:        document.getElementById('segn_telefono').value.trim(),
+    commissione_pct: parseFloat(document.getElementById('segn_pct').value) || 0,
+    piva_cf:         document.getElementById('segn_piva').value.trim(),
+    iban:            document.getElementById('segn_iban').value.trim(),
+    attivo:          document.getElementById('segn_attivo').checked,
+  };
+  if (!dati.nome) { alert('Il nome del segnalatore è obbligatorio.'); return; }
+  try {
+    const r = await fetch(url + '/api/segnalatori' + (id ? '/' + id : ''), {
+      method: id ? 'PUT' : 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(dati),
+    });
+    if (!r.ok) throw new Error(await r.text());
+    document.getElementById('segn-form').style.display = 'none';
+    await loadSegnalatori();
+    loadOffers();
+  } catch(e) { alert('Errore salvataggio segnalatore: ' + e.message); }
+}
+
+async function deleteSegnalatore(id) {
+  const s = segnalatoriCache.find(x => x.id === id);
+  if (!confirm(`Eliminare il segnalatore "${s ? s.nome : id}"?`)) return;
+  try {
+    const r = await fetch(apiBase() + '/api/segnalatori/' + id, {method:'DELETE'});
+    if (!r.ok) { const err = await r.json().catch(()=>({})); throw new Error(err.error || 'HTTP '+r.status); }
+    await loadSegnalatori();
+  } catch(e) { alert(e.message); }
+}
+
+// ─── SCHEDA SEGNALATORE (stampabile) ──────────────────────────
+async function schedaSegnalatore(id) {
+  try {
+    const r = await fetch(apiBase() + '/api/segnalatori/' + id);
+    if (!r.ok) throw new Error('Segnalatore non trovato');
+    const s = await r.json();
+    const offs = s.offerte || [];
+    const comm = o => (parseFloat(o.totale_annuo)||0) * (parseFloat(o.referente_commissione_pct)||0) / 100;
+    const maturate  = offs.filter(o=>o.stato==='accettata').reduce((a,o)=>a+comm(o),0);
+    const potenziali = offs.reduce((a,o)=>a+comm(o),0);
+
+    const righe = offs.length ? offs.map(o => {
+      const acc = o.stato === 'accettata';
+      return `<tr>
+        <td>${o.created_at ? new Date(o.created_at).toLocaleDateString('it-IT') : '—'}</td>
+        <td><strong>${esc(o.ragione_sociale)}</strong></td>
+        <td>${esc(o.settore)||'—'}</td>
+        <td style="text-align:center;text-transform:uppercase;font-size:11px;font-weight:bold;color:${acc?'#2E7D32':'#999'};">${o.stato}</td>
+        <td style="text-align:right;">€ ${fmt(o.totale_annuo)}</td>
+        <td style="text-align:center;">${o.referente_commissione_pct||0}%</td>
+        <td style="text-align:right;font-weight:bold;color:${acc?'#2E7D32':'#999'};">€ ${fmt(comm(o))}</td>
+      </tr>`;
+    }).join('') : '<tr><td colspan="7" style="text-align:center;color:#999;padding:14px;">Nessuna offerta segnalata.</td></tr>';
+
+    const anag = [
+      s.email    ? `Email: <span class="hi">${esc(s.email)}</span>` : '',
+      s.telefono ? `Telefono: <span class="hi">${esc(s.telefono)}</span>` : '',
+      s.piva_cf  ? `P.IVA / C.F.: <span class="hi">${esc(s.piva_cf)}</span>` : '',
+      s.iban     ? `IBAN: <span class="hi">${esc(s.iban)}</span>` : '',
+    ].filter(Boolean).join('<br>') || '<span style="color:#999;">Nessun dato di contatto</span>';
+
+    let html = `<div style="text-align:center;margin:0 0 16px;"><img src="data:image/png;base64,${LOGO_B64}" alt="FocusData" style="max-width:100%;height:auto;display:block;margin:0 auto;"></div>`;
+    html += `<div class="doc-hdr"><h2>SCHEDA SEGNALATORE</h2><p>Riepilogo provvigioni</p></div>`;
+    html += `<div class="doc-info">
+      <div class="doc-cell"><div class="cl">Segnalatore</div><div class="cv">
+        <span class="hi" style="font-size:15px;">${esc(s.nome)}</span><br>${anag}
+      </div></div>
+      <div class="doc-cell"><div class="cl">Emesso da</div><div class="cv">
+        <strong>FOCUSDATA CONSULTING SRL</strong><br>
+        Via Ferruzzano 58 – 00173 Roma<br>
+        P.IVA 17789591009 | REA RM-1741855<br>
+        Roncadelle (BS), <strong>${fmtDate(new Date().toISOString().split('T')[0])}</strong>
+      </div></div>
+    </div>`;
+    html += `<div class="sec-bar blue">OFFERTE SEGNALATE</div>
+      <table class="svc-table" style="width:100%;font-size:12px;margin-top:6px;">
+        <thead><tr>
+          <th>Data</th><th>Cliente</th><th>Settore</th><th style="text-align:center;">Stato</th>
+          <th style="text-align:right;">Totale</th><th style="text-align:center;">%</th><th style="text-align:right;">Provvigione</th>
+        </tr></thead>
+        <tbody>${righe}</tbody>
+      </table>`;
+    html += `<div class="total-bar blue" style="margin-top:14px;">
+        <span>PROVVIGIONI MATURATE (offerte accettate)</span><span>€ ${fmt(maturate)}</span>
+      </div>
+      <div class="sec-total" style="margin-top:6px;">In attesa / potenziali (tutte le offerte): € ${fmt(potenziali)}</div>`;
+    html += `<p style="font-size:11px;color:#777;margin-top:18px;line-height:1.5;">
+      Le provvigioni si intendono maturate esclusivamente sulle offerte accettate dal cliente e
+      sono calcolate sul totale annuo dell'offerta al netto di IVA. Il pagamento avviene secondo
+      gli accordi intercorsi tra le parti.</p>`;
+
+    document.getElementById('preview-content').innerHTML = html;
+    document.getElementById('preview-area').style.display = 'block';
+    document.getElementById('preview-area').scrollIntoView({behavior:'smooth'});
+  } catch(e) { alert('Errore scheda: ' + e.message); }
 }
 
 async function changeStato(id, stato) {
@@ -1475,7 +1723,7 @@ function resetForm() {
   document.getElementById('preview-area').style.display='none';
   document.getElementById('data_offerta').value=new Date().toISOString().split('T')[0];
   document.getElementById('ref_tipo').value='generico';
-  document.getElementById('ref_nome').value='';
+  document.getElementById('ref_segnalatore').value='';
   document.getElementById('ref_pct').value=10;
   toggleRefTipo();
   setRegime('forfettario');
