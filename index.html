@@ -666,6 +666,54 @@ textarea { resize:vertical; min-height:60px; }
   </div>
 </div>
 
+<!-- OPERATORI DELLO STUDIO -->
+<div class="container" id="operatori-area" style="display:none;">
+  <div class="card">
+    <div class="card-header" style="justify-content:space-between;">
+      <span>Operatori dello Studio</span>
+      <button class="btn btn-gray" style="padding:4px 12px;font-size:12px;" onclick="nuovoOperatore()">＋ Nuovo operatore</button>
+    </div>
+    <div class="card-body">
+      <div id="op-form" style="display:none;background:#F7F9FC;border:1px solid #D8E3F0;border-radius:8px;padding:16px;margin-bottom:18px;">
+        <div style="font-weight:600;color:#1F3864;margin-bottom:12px;" id="op-form-title">Nuovo operatore</div>
+        <input type="hidden" id="op_id" />
+        <div class="grid-2">
+          <div><label>Nome e cognome</label><input type="text" id="op_nome" placeholder="Es. Anna Verdi" /></div>
+          <div><label>Email (serve per accedere) *</label><input type="email" id="op_email" placeholder="anna.verdi@studio.it" autocomplete="off" /></div>
+          <div>
+            <label>Ruolo</label>
+            <select id="op_ruolo">
+              <option value="operatore">Operatore — crea e modifica offerte</option>
+              <option value="admin">Amministratore — gestisce anche impostazioni e operatori</option>
+            </select>
+          </div>
+          <div>
+            <label id="op_pwd_label">Password iniziale *</label>
+            <input type="password" id="op_pwd" placeholder="minimo 8 caratteri" autocomplete="new-password" />
+          </div>
+        </div>
+        <label style="display:flex;align-items:center;gap:7px;margin-top:10px;font-weight:normal;text-transform:none;font-size:13px;cursor:pointer;">
+          <input type="checkbox" id="op_attivo" checked style="width:auto;" /> Può accedere (account attivo)
+        </label>
+        <div style="display:flex;gap:8px;margin-top:14px;">
+          <button class="btn btn-green" style="padding:7px 16px;font-size:13px;" onclick="salvaOperatore()">💾 Salva</button>
+          <button class="btn btn-gray" style="padding:7px 16px;font-size:13px;" onclick="document.getElementById('op-form').style.display='none'">✕ Annulla</button>
+        </div>
+        <div id="op-msg" style="margin-top:10px;font-size:13px;"></div>
+      </div>
+
+      <div id="op-vuoto" style="text-align:center;color:#aaa;padding:20px;">Nessun operatore. Il titolare accede con le proprie credenziali; aggiungi qui i collaboratori.</div>
+      <table class="offers-table" id="op-table" style="display:none;">
+        <thead><tr>
+          <th>Nome</th><th>Email</th><th style="text-align:center;">Ruolo</th>
+          <th style="text-align:center;">Stato</th><th>Ultimo accesso</th><th>Azioni</th>
+        </tr></thead>
+        <tbody id="op-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <!-- ANAGRAFICA SEGNALATORI -->
 <div class="container" id="segnalatori-area" style="display:none;">
   <div class="card">
@@ -919,6 +967,7 @@ async function testApi() {
       msg.textContent='✓ API raggiungibile';
       loadOffers();
       loadSegnalatori();
+      loadOperatori();
     } else throw new Error('HTTP ' + r.status);
   } catch(e) {
     dot.className='dot err'; lbl.textContent='Errore connessione';
@@ -1490,6 +1539,146 @@ function renderStats(rows) {
   });
 
   document.getElementById('stats-area').style.display = 'block';
+}
+
+// ─── OPERATORI DELLO STUDIO ───────────────────────────────────
+let operatoriCache = [];
+
+// Visibile solo a chi gestisce lo studio (admin/superadmin) o in modalità
+// transizione senza login attivo.
+function puoGestireOperatori() {
+  return !utenteCorrente || ['admin','superadmin'].includes(utenteCorrente.ruolo);
+}
+
+async function loadOperatori() {
+  const url = apiBase();
+  if (!url || !puoGestireOperatori()) {
+    document.getElementById('operatori-area').style.display = 'none';
+    return;
+  }
+  try {
+    const r = await fetch(url + '/api/utenti');
+    if (!r.ok) { document.getElementById('operatori-area').style.display='none'; return; }
+    operatoriCache = await r.json();
+  } catch(e) { console.warn('Operatori:', e.message); return; }
+
+  document.getElementById('operatori-area').style.display = 'block';
+  const tb = document.getElementById('op-tbody');
+  const tab = document.getElementById('op-table');
+  const vuoto = document.getElementById('op-vuoto');
+  if (!operatoriCache.length) { tab.style.display='none'; vuoto.style.display='block'; return; }
+  tab.style.display=''; vuoto.style.display='none';
+
+  const io = utenteCorrente ? utenteCorrente.uid : null;
+  tb.innerHTML = operatoriCache.map(u => {
+    const sono = u.id === io;
+    const acc = u.ultimo_accesso
+      ? new Date(u.ultimo_accesso).toLocaleString('it-IT', {dateStyle:'short', timeStyle:'short'})
+      : '<span style="color:#bbb;">mai</span>';
+    return `<tr style="${u.attivo?'':'opacity:.55;'}">
+      <td><strong>${esc(u.nome)||'—'}</strong>${sono?' <span style="font-size:10px;color:#1565C0;">(tu)</span>':''}</td>
+      <td style="font-size:12px;color:#555;">${esc(u.email)}</td>
+      <td style="text-align:center;">
+        <span style="background:${u.ruolo==='admin'?'#E3F2FD':'#F1F1F1'};color:${u.ruolo==='admin'?'#1565C0':'#666'};
+                     padding:2px 9px;border-radius:10px;font-size:11px;font-weight:600;">
+          ${u.ruolo==='admin'?'Amministratore':'Operatore'}
+        </span>
+      </td>
+      <td style="text-align:center;">
+        ${u.attivo ? '<span style="color:#2E7D32;font-size:11px;font-weight:600;">ATTIVO</span>'
+                   : '<span style="color:#999;font-size:11px;font-weight:600;">SOSPESO</span>'}
+      </td>
+      <td style="font-size:12px;color:#777;">${acc}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn-edit-sm" onclick="editOperatore(${u.id})">✏ Modifica</button>
+        <button class="btn-reprint-sm" style="margin-left:4px;background:#6A1B9A;" onclick="resetPasswordOperatore(${u.id})" title="Assegna una nuova password">🔑 Password</button>
+        ${sono ? '' : `<button class="btn-del-sm" style="margin-left:4px;" onclick="deleteOperatore(${u.id})">✕</button>`}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function nuovoOperatore() {
+  document.getElementById('op-form').style.display = 'block';
+  document.getElementById('op-form-title').textContent = 'Nuovo operatore';
+  ['op_id','op_nome','op_email','op_pwd'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('op_ruolo').value = 'operatore';
+  document.getElementById('op_attivo').checked = true;
+  document.getElementById('op_email').disabled = false;
+  document.getElementById('op_pwd').parentElement.style.display = '';
+  document.getElementById('op_pwd_label').textContent = 'Password iniziale *';
+  document.getElementById('op-msg').textContent = '';
+  document.getElementById('op_nome').focus();
+}
+
+function editOperatore(id) {
+  const u = operatoriCache.find(x => x.id === id);
+  if (!u) return;
+  document.getElementById('op-form').style.display = 'block';
+  document.getElementById('op-form-title').textContent = 'Modifica operatore';
+  document.getElementById('op_id').value    = u.id;
+  document.getElementById('op_nome').value  = u.nome || '';
+  document.getElementById('op_email').value = u.email;
+  document.getElementById('op_email').disabled = true;      // l'email è l'identificativo di accesso
+  document.getElementById('op_ruolo').value = u.ruolo;
+  document.getElementById('op_attivo').checked = !!u.attivo;
+  document.getElementById('op_pwd').value = '';
+  document.getElementById('op_pwd').parentElement.style.display = 'none';  // si cambia col pulsante dedicato
+  document.getElementById('op-msg').textContent = '';
+  document.getElementById('op-form').scrollIntoView({behavior:'smooth'});
+}
+
+async function salvaOperatore() {
+  const id   = document.getElementById('op_id').value;
+  const msg  = document.getElementById('op-msg');
+  const dati = {
+    nome:   document.getElementById('op_nome').value.trim(),
+    email:  document.getElementById('op_email').value.trim(),
+    ruolo:  document.getElementById('op_ruolo').value,
+    attivo: document.getElementById('op_attivo').checked,
+  };
+  if (!id) {
+    dati.password = document.getElementById('op_pwd').value;
+    if (!dati.email)                 { msg.style.color='#C62828'; msg.textContent='L\'email è obbligatoria.'; return; }
+    if ((dati.password||'').length < 8) { msg.style.color='#C62828'; msg.textContent='La password deve avere almeno 8 caratteri.'; return; }
+  }
+  try {
+    const r = await fetch(apiBase() + '/api/utenti' + (id ? '/' + id : ''), {
+      method: id ? 'PUT' : 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(dati),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Errore');
+    document.getElementById('op-form').style.display = 'none';
+    await loadOperatori();
+  } catch(e) { msg.style.color='#C62828'; msg.textContent = e.message; }
+}
+
+async function resetPasswordOperatore(id) {
+  const u = operatoriCache.find(x => x.id === id);
+  const p = prompt(`Nuova password per ${u ? u.email : 'l\'operatore'} (minimo 8 caratteri).\n\nComunicagliela di persona: non viene inviata via email.`);
+  if (p === null) return;
+  if (p.length < 8) { alert('La password deve avere almeno 8 caratteri.'); return; }
+  try {
+    const r = await fetch(apiBase() + `/api/utenti/${id}/password`, {
+      method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({password:p}),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Errore');
+    alert('Password aggiornata. Al prossimo accesso userà quella nuova.');
+  } catch(e) { alert('Errore: ' + e.message); }
+}
+
+async function deleteOperatore(id) {
+  const u = operatoriCache.find(x => x.id === id);
+  if (!confirm(`Eliminare l'operatore "${u ? (u.nome || u.email) : id}"?\n\nNon potrà più accedere. Le offerte che ha creato restano.`)) return;
+  try {
+    const r = await fetch(apiBase() + '/api/utenti/' + id, {method:'DELETE'});
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Errore');
+    await loadOperatori();
+  } catch(e) { alert('Errore: ' + e.message); }
 }
 
 // ─── SEGNALATORI: anagrafica ──────────────────────────────────
