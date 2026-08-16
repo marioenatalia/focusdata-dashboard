@@ -155,6 +155,7 @@ textarea { resize:vertical; min-height:60px; }
 .sec-bar.green  { background:#1B5E20; }
 .sec-bar.purple { background:#4A148C; }
 .sec-bar.teal   { background:#00695C; }
+.sec-bar.cyan   { background:#00838F; }
 .dbullet { font-size:12px; color:#333; border-left:3px solid #C0C8D8; margin:4px 0; padding:4px 10px; }
 .ptbl { width:100%; border-collapse:collapse; margin:7px 0; font-size:12px; }
 .ptbl th { background:#F0F0F0; border:1px solid #C0C8D8; padding:6px 9px; text-align:left; font-size:10px; color:#555; text-transform:uppercase; }
@@ -165,6 +166,7 @@ textarea { resize:vertical; min-height:60px; }
 .total-bar.green  { background:#1B5E20; }
 .total-bar.purple { background:#4A148C; }
 .total-bar.teal   { background:#00695C; }
+.total-bar.cyan   { background:#00838F; }
 .total-bar .tv { font-size:17px; }
 @media print {
   body { background:white; }
@@ -296,6 +298,42 @@ textarea { resize:vertical; min-height:60px; }
           <th class="chk">✓</th><th>Voce aggiuntiva</th><th class="col-pr">Prezzo (€)</th><th class="col-qt">Q.tà</th><th class="col-un">Unità</th><th class="col-sb">Subtotale</th><th style="width:28px"></th>
         </tr></thead><tbody id="o_extra_body"></tbody></table>
         <button class="add-row-btn" onclick="addRow('o_extra')">＋ Aggiungi voce aggiuntiva</button>
+      </div>
+
+      <!-- SERVIZIO VERIFICA PEC + AVVISO WHATSAPP -->
+      <div style="margin-top:18px;border:1px solid #B2DFDB;border-radius:8px;overflow:hidden;">
+        <div style="background:#00695C;color:#fff;padding:9px 14px;display:flex;align-items:center;gap:10px;">
+          <span style="font-weight:600;font-size:13px;">Monitoraggio PEC con avviso WhatsApp</span>
+          <label style="display:flex;align-items:center;gap:6px;margin-left:auto;font-size:12px;font-weight:normal;cursor:pointer;">
+            <input type="checkbox" id="pec_on" checked onchange="updateTotals()" style="width:auto;accent-color:#80CBC4;" />
+            Includi nell'offerta
+          </label>
+        </div>
+        <div style="padding:14px;background:#F4FBFA;">
+          <div class="grid-2" style="align-items:end;">
+            <div>
+              <label>Canone annuale (€ + IVA)</label>
+              <input type="number" id="pec_canone" value="60" step="10" oninput="pecManuale=true;updateTotals()" />
+              <div style="font-size:11px;color:#888;margin-top:4px;">
+                Tariffa suggerita: € 60 forfettario · € 100 semplificata · € 140 ordinaria
+              </div>
+            </div>
+            <div>
+              <div class="price-box" style="background:#E0F2F1;border-color:#80CBC4;">
+                <div class="plbl">Monitoraggio PEC + avvisi WhatsApp</div>
+                <div class="pval" id="pec_disp" style="color:#00695C;">€ 60,00 + IVA</div>
+                <div class="pnote">Canone annuale tutto compreso</div>
+              </div>
+            </div>
+          </div>
+          <p style="font-size:12px;color:#666;margin-top:10px;line-height:1.55;">
+            <strong>Include:</strong> verifica continuativa della casella PEC aziendale con <strong>invio automatico via WhatsApp</strong>
+            dell'avviso a ogni messaggio ricevuto, corredato da <strong>riassunto generato con intelligenza artificiale</strong>
+            del contenuto e degli allegati. Il servizio consente di ricevere in tempo reale la notizia di ogni PEC in arrivo
+            — notifiche di accertamento, cartelle, comunicazioni di enti e istituti — evitando che una comunicazione passi
+            inosservata e prevenendo <strong>ritardi, decadenze e sanzioni</strong> derivanti dalla mancata o tardiva presa visione.
+          </p>
+        </div>
       </div>
     </div>
   </div>
@@ -534,6 +572,37 @@ textarea { resize:vertical; min-height:60px; }
       </p>
     </div>
   </div>
+  <!-- MODALITÀ DI PAGAMENTO -->
+  <div class="card">
+    <div class="card-header" style="justify-content:space-between;">
+      <span>Modalità di pagamento</span>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:normal;text-transform:none;cursor:pointer;">
+        <input type="checkbox" id="sdd_on" checked onchange="toggleSdd()" style="width:auto;accent-color:#F9A825;" />
+        Includi addebito automatico
+      </label>
+    </div>
+    <div class="card-body">
+      <div id="sdd_box" style="background:#FFF8E1;border:1px solid #F0C36D;border-radius:8px;padding:14px;">
+        <div style="font-size:13px;font-weight:600;color:#7A5200;margin-bottom:6px;">
+          Addebito automatico su fattura tramite TeamSystem — condizione operativa obbligatoria
+        </div>
+        <p style="font-size:12px;color:#6b5426;margin:0;line-height:1.55;">
+          Il pagamento dei corrispettivi avviene esclusivamente mediante <strong>addebito automatico</strong>
+          collegato al servizio TeamSystem. L'attivazione del mandato è <strong>presupposto operativo per l'avvio
+          e la prosecuzione dell'incarico</strong> e viene presentata al cliente come condizione non negoziabile.
+        </p>
+        <div style="margin-top:10px;">
+          <label style="font-size:11px;">Testo alternativo se l'addebito viene escluso</label>
+          <input type="text" id="pag_alternativo" value="pagamento a mezzo bonifico bancario a ricevimento fattura"
+                 style="font-size:12px;" />
+        </div>
+      </div>
+      <p id="sdd_off_msg" style="display:none;font-size:12px;color:#C62828;margin-top:10px;">
+        ⚠ Addebito automatico <strong>escluso</strong> da questa offerta: nel preventivo comparirà solo la modalità alternativa indicata sopra.
+      </p>
+    </div>
+  </div>
+
   <!-- NOTE -->
   <div class="card">
     <div class="card-header">Note aggiuntive</div>
@@ -980,12 +1049,19 @@ function fmt(n) { return Number(n).toLocaleString('it-IT',{minimumFractionDigits
 function fmtDate(s) { if(!s) return '—'; const d=new Date(s+'T00:00:00'); return d.toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'}); }
 function v(id) { return document.getElementById(id).value.trim(); }
 
+// ─── SERVIZIO PEC + WHATSAPP ──────────────────────────────────
+// Tariffa legata al regime; resta modificabile a mano (pecManuale evita che
+// il cambio regime sovrascriva un importo personalizzato dall'operatore).
+const PEC_TARIFFE = { forfettario: 60, semplificato: 100, ordinario: 140 };
+let pecManuale = false;
+
 // ─── REGIME ───────────────────────────────────────────────────
 function setRegime(r) {
   currentRegime = r;
   document.querySelectorAll('.regime-tab').forEach((t,i)=>t.classList.toggle('active',['forfettario','semplificato','ordinario'][i]===r));
   document.querySelectorAll('.regime-section').forEach(s=>s.classList.remove('active'));
   document.getElementById('sec-'+r).classList.add('active');
+  if (!pecManuale) document.getElementById('pec_canone').value = PEC_TARIFFE[r];
   updateTotals();
 }
 
@@ -1102,6 +1178,12 @@ function updateTotals() {
   const extraTot = calcSvc(extraSec);
   base += extraTot;
 
+  // Monitoraggio PEC: fa parte del pacchetto contabilità, quindi entra nella base
+  const pecOn = document.getElementById('pec_on').checked;
+  const pecCanone = parseFloat(document.getElementById('pec_canone').value) || 0;
+  document.getElementById('pec_disp').textContent = '€ ' + fmt(pecCanone) + ' + IVA';
+  if (pecOn) base += pecCanone;
+
   const lOn = document.getElementById('lavoro_on').checked;
   const pOn = document.getElementById('pratiche_on').checked;
   const fOn = document.getElementById('finanza_on').checked;
@@ -1115,6 +1197,15 @@ function updateTotals() {
   document.getElementById('grand_tot').textContent = '€ ' + fmt(grand);
   window._grandTotal = grand;
   updateRefComm();
+}
+
+// ─── MODALITÀ DI PAGAMENTO ────────────────────────────────────
+// L'addebito automatico TeamSystem è previsto di default come condizione
+// operativa obbligatoria, ma può essere escluso caso per caso in trattativa.
+function toggleSdd() {
+  const on = document.getElementById('sdd_on').checked;
+  document.getElementById('sdd_box').style.opacity = on ? '1' : '.45';
+  document.getElementById('sdd_off_msg').style.display = on ? 'none' : 'block';
 }
 
 // ─── REFERENTE / COMMISSIONE ──────────────────────────────────
@@ -1182,7 +1273,9 @@ function collectOffer() {
   const lTot = lavoro.reduce((s,r)=>s+r.sub,0);
   const pTot = pratiche.reduce((s,r)=>s+r.sub,0);
   const extraTot2 = extraRows.reduce((s,r)=>s+r.sub,0);
-  const grand = base + extraTot2 + (lTotale ? lTot : 0) + (pTotale ? pTot : 0) + (fTotale2 ? fCanone2 : 0);
+  const pecOn2     = document.getElementById('pec_on').checked;
+  const pecCanone2 = pecOn2 ? (parseFloat(document.getElementById('pec_canone').value) || 0) : 0;
+  const grand = base + extraTot2 + pecCanone2 + (lTotale ? lTot : 0) + (pTotale ? pTot : 0) + (fTotale2 ? fCanone2 : 0);
 
   const refTipo = document.getElementById('ref_tipo').value;
   const segSel  = document.getElementById('ref_segnalatore');
@@ -1208,7 +1301,7 @@ function collectOffer() {
     referente_nome: refNome,
     referente_commissione_pct: refPct,
     segnalatore_id: segId,
-    offer_json: { regime: currentRegime, contab, extra: extraRows, lavoro, lavoro_in_totale: lTotale, pratiche, pratiche_in_totale: pTotale, finanza_canone: fOn2 ? fCanone2 : 0, finanza_in_totale: fTotale2, note: v('note'), grand, referente_tipo: refTipo, referente_nome: refNome, referente_commissione_pct: refPct },
+    offer_json: { regime: currentRegime, contab, extra: extraRows, lavoro, lavoro_in_totale: lTotale, pratiche, pratiche_in_totale: pTotale, finanza_canone: fOn2 ? fCanone2 : 0, finanza_in_totale: fTotale2, pec_attivo: pecOn2, pec_canone: pecCanone2, sdd_attivo: document.getElementById('sdd_on').checked, pag_alternativo: v('pag_alternativo'), note: v('note'), grand, referente_tipo: refTipo, referente_nome: refNome, referente_commissione_pct: refPct },
   };
 }
 
@@ -1340,6 +1433,16 @@ async function loadOfferIntoForm(id) {
       toggleSez('finanza');
       document.getElementById('finanza_totale').checked = oj.finanza_in_totale || false;
     }
+    // Monitoraggio PEC
+    if (oj.pec_canone !== undefined) {
+      document.getElementById('pec_on').checked = !!oj.pec_attivo;
+      document.getElementById('pec_canone').value = oj.pec_canone || PEC_TARIFFE[o.regime] || 60;
+      pecManuale = true;   // rispetta l'importo salvato, non sovrascriverlo
+    }
+    // Modalità di pagamento
+    document.getElementById('sdd_on').checked = oj.sdd_attivo !== false;
+    if (oj.pag_alternativo) document.getElementById('pag_alternativo').value = oj.pag_alternativo;
+    toggleSdd();
     // Referente / commissione (legge dai campi colonna o dal JSON)
     const rTipo = o.referente_tipo || oj.referente_tipo || 'generico';
     document.getElementById('ref_tipo').value = rTipo;
@@ -1961,7 +2064,12 @@ function renderPreview(o) {
   let intro = o.passaggio_studio
     ? `Con la presente, facciamo seguito ai colloqui intercorsi${o.settore?' ('+o.settore+')':''} e, nel prendere atto del passaggio dalla precedente struttura professionale, sottoponiamo la seguente proposta per la gestione degli adempimenti contabili e fiscali a favore di <strong>${rs}</strong>`
     : `Con la presente facciamo seguito ai colloqui intercorsi e sottoponiamo la seguente proposta professionale a favore di <strong>${rs}</strong>`;
-  intro += `. I compensi verranno fatturati trimestralmente in via anticipata con conguaglio al trimestre successivo, pagamento a mezzo bonifico a ricevimento fattura.`;
+  const sddAttivo = o.offer_json.sdd_attivo !== false;   // default: previsto
+  const pagAlt = o.offer_json.pag_alternativo || 'pagamento a mezzo bonifico bancario a ricevimento fattura';
+  intro += `. I compensi verranno fatturati trimestralmente in via anticipata con conguaglio al trimestre successivo, ` +
+           (sddAttivo
+             ? `con addebito automatico su fattura tramite il servizio TeamSystem.`
+             : `${pagAlt}.`);
   html += `<p class="doc-intro">${intro}</p>`;
 
   if (o.passaggio_studio) {
@@ -2034,6 +2142,20 @@ function renderPreview(o) {
     <table class="ptbl"><tr><th>Voce</th><th style="text-align:right">Prezzo</th><th style="text-align:center">Q.tà</th><th>Unità</th><th style="text-align:right">Subtotale</th></tr>${eRows}</table>`;
   }
 
+  // Monitoraggio PEC + avviso WhatsApp
+  if (o.offer_json.pec_attivo && o.offer_json.pec_canone) {
+    html += `<div class="sec-bar cyan">MONITORAGGIO PEC CON AVVISO WHATSAPP</div>
+    <p style="font-size:12px;color:#333;margin:7px 0 5px;line-height:1.55;">
+      Verifica continuativa della casella PEC aziendale con <strong>invio automatico via WhatsApp</strong> dell'avviso
+      a ogni messaggio ricevuto, corredato da <strong>riassunto generato con intelligenza artificiale</strong> del
+      contenuto e degli allegati.</p>
+    <div class="dbullet">• Avviso <strong>in tempo reale</strong> di ogni PEC in arrivo, direttamente sul telefono.</div>
+    <div class="dbullet">• Riassunto AI del contenuto e degli allegati, per capire subito di cosa si tratta.</div>
+    <div class="dbullet">• Copertura di notifiche di accertamento, cartelle, comunicazioni di enti e istituti previdenziali.</div>
+    <div class="dbullet">• Prevenzione di <strong>ritardi, decadenze e sanzioni</strong> dovuti alla mancata o tardiva presa visione.</div>
+    <div class="total-bar cyan"><span>Canone monitoraggio PEC</span><span class="tv">€ ${fmt(o.offer_json.pec_canone)} + IVA / anno</span></div>`;
+  }
+
   // Finanza agevolata
   if (o.offer_json.finanza_canone) {
     const fInTot = o.offer_json.finanza_in_totale;
@@ -2049,17 +2171,36 @@ function renderPreview(o) {
 
   if (o.offer_json.note) html += `<div class="sec-bar blue">NOTE</div><p style="font-size:12px;color:#333;margin-top:7px;white-space:pre-line;">${o.offer_json.note}</p>`;
 
+  // Modalità di pagamento
+  const nomeStudio = (studioCorrente && studioCorrente.slug !== 'focusdata')
+    ? studioCorrente.nome : 'FocusData Consulting SRL';
+  if (sddAttivo) {
+    html += `<div class="sec-bar navy">MODALITÀ DI PAGAMENTO</div>
+    <p style="font-size:12px;color:#333;margin:7px 0 5px;line-height:1.6;">
+      Il pagamento dei corrispettivi avviene mediante <strong>addebito automatico su fattura tramite il servizio
+      TeamSystem</strong>. L'attivazione del relativo mandato costituisce <strong>presupposto operativo per l'avvio
+      e la prosecuzione dell'incarico</strong>.</p>
+    <div class="dbullet">• Il cliente sottoscrive il mandato di addebito contestualmente all'accettazione della presente offerta.</div>
+    <div class="dbullet">• L'addebito è disposto alla scadenza indicata in fattura, secondo la periodicità trimestrale anticipata.</div>
+    <div class="dbullet">• Il cliente si impegna a mantenere attivo il mandato e la relativa provvista per tutta la durata dell'incarico.</div>
+    <div class="dbullet">• La revoca del mandato senza contestuale accordo scritto su una diversa modalità di pagamento comporta la sospensione dei servizi.</div>`;
+  } else {
+    html += `<div class="sec-bar navy">MODALITÀ DI PAGAMENTO</div>
+    <p style="font-size:12px;color:#333;margin:7px 0 5px;line-height:1.6;">
+      Fatturazione trimestrale anticipata con conguaglio al trimestre successivo, ${pagAlt}.</p>`;
+  }
+
   html += `<div class="sec-bar blue">CONDIZIONI GENERALI</div>
   <ul style="font-size:12px;color:#333;margin:7px 0 0 16px;line-height:1.8;">
     <li>I compensi indicati sono al netto di IVA, diritti, bolli e spese vive.</li>
-    <li>La fatturazione avviene a cadenza trimestrale anticipata con conguaglio, pagamento a mezzo bonifico.</li>
+    <li>La fatturazione avviene a cadenza trimestrale anticipata con conguaglio, ${sddAttivo ? 'con addebito automatico tramite TeamSystem' : pagAlt}.</li>
     <li>Le attività vengono svolte nel rispetto delle normative vigenti. Eventuali prestazioni riservate ad albi saranno svolte tramite professionisti abilitati.</li>
     <li>I compensi potranno essere adeguati in funzione del volume operativo e della complessità gestionale.</li>
     <li>La presente offerta ha validità di 30 giorni dalla data di emissione.</li>
   </ul>
   <div style="margin-top:36px;display:flex;justify-content:space-between;font-size:12px;">
     <div><strong>Per accettazione – Timbro e firma</strong><br><br>Data: ____________<br><br>___________________________</div>
-    <div style="text-align:right;"><strong>FocusData Consulting SRL</strong><br>Amministratore Unico<br><em>Mario Pietri</em></div>
+    <div style="text-align:right;"><strong>${nomeStudio}</strong>${nomeStudio==='FocusData Consulting SRL' ? '<br>Amministratore Unico<br><em>Mario Pietri</em>' : '<br>Il Legale Rappresentante<br><br>___________________'}</div>
   </div>`;
 
   document.getElementById('preview-content').innerHTML = html;
@@ -2101,6 +2242,13 @@ function resetForm() {
   document.getElementById('ref_segnalatore').value='';
   document.getElementById('ref_pct').value=10;
   toggleRefTipo();
+  // PEC e modalità di pagamento tornano ai valori predefiniti
+  pecManuale = false;
+  document.getElementById('pec_on').checked = true;
+  document.getElementById('pec_canone').value = PEC_TARIFFE['forfettario'];
+  document.getElementById('sdd_on').checked = true;
+  document.getElementById('pag_alternativo').value = 'pagamento a mezzo bonifico bancario a ricevimento fattura';
+  toggleSdd();
   setRegime('forfettario');
   setEditMode(null);
 }
