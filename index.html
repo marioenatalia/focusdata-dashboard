@@ -77,6 +77,11 @@ textarea { resize:vertical; min-height:60px; }
 .btn-edit-sm:hover { background:#2E5090; }
 .btn-reprint-sm { background:#1B5E20; color:white; border:none; border-radius:4px; padding:3px 9px; font-size:11px; cursor:pointer; }
 .btn-reprint-sm:hover { background:#2E7D32; }
+.btn-firma-sm { background:#00838F; color:white; border:none; border-radius:4px; padding:3px 9px; font-size:11px; cursor:pointer; margin-left:4px; }
+.btn-firma-sm:hover { background:#006064; }
+.btn-firma-sm.attesa { background:#E65100; }
+.btn-firma-sm.attesa:hover { background:#BF360C; }
+.badge-firmato { display:inline-block; background:#E8F5E9; color:#2E7D32; border:1px solid #A5D6A7; border-radius:4px; padding:3px 9px; font-size:11px; font-weight:bold; margin-left:4px; }
 .sec-total { margin-top:8px; text-align:right; font-size:13px; font-weight:bold; color:#1F3864; padding:8px 10px; background:#EEF3FB; border-radius:5px; border:1px solid #C0C8D8; }
 .add-row-btn { margin-top:10px; background:none; border:1px dashed #C0C8D8; border-radius:5px; padding:7px 14px; font-size:12px; color:#555; cursor:pointer; display:flex; align-items:center; gap:6px; width:100%; justify-content:center; transition:all .15s; }
 .add-row-btn:hover { border-color:#1F3864; color:#1F3864; background:#EEF3FB; }
@@ -1488,6 +1493,7 @@ async function loadOffers() {
     const r = await fetch(url + '/api/offerte');
     if (!r.ok) throw new Error();
     const rows = await r.json();
+    await loadStatiFirma();          // stato firma da Staff Dashboard
     const tbody = document.getElementById('offers-tbody');
     if (!rows.length) {
       tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#aaa;padding:20px;">Nessuna offerta salvata.</td></tr>';
@@ -1513,6 +1519,7 @@ async function loadOffers() {
         <td style="white-space:nowrap;">
           <button class="btn-edit-sm" onclick="loadOfferIntoForm(${o.id})" title="Carica nel modulo per modificare">✏ Modifica</button>
           <button class="btn-reprint-sm" style="margin-left:4px;" onclick="reprintOffer(${o.id})" title="Genera anteprima da offerta salvata">🖨 Ristampa</button>
+          ${bottoneFirma(o)}
         </td>
       </tr>`;
     }).join('');
@@ -1642,6 +1649,54 @@ function renderStats(rows) {
   });
 
   document.getElementById('stats-area').style.display = 'block';
+}
+
+// ─── FIRMA OTP (via Staff Dashboard) ──────────────────────────
+// La firma elettronica passa dallo Staff Dashboard FocusData, che possiede il
+// flusso OTP (SMS Twilio + email Resend) e l'archivio "Documenti Firmati".
+// Qui mostriamo lo stato e il collegamento diretto: un solo flusso, un solo archivio.
+const STAFF_URL = 'https://focusdata-staff.vercel.app';
+let statiFirma = {};   // offerta_id → { stato, doc_id, data }
+
+// Disponibile solo per lo studio FocusData: gli altri studi non hanno
+// (ancora) un proprio flusso di firma collegato.
+function firmaDisponibile() {
+  return !studioCorrente || studioCorrente.slug === 'focusdata';
+}
+
+async function loadStatiFirma() {
+  if (!firmaDisponibile()) { statiFirma = {}; return; }
+  try {
+    const r = await fetch(apiBase() + '/api/staff/documenti?tipo=preventivo');
+    if (!r.ok) return;
+    const raw = await r.json();
+    const lista = Array.isArray(raw) ? raw : (raw.data || []);
+    const m = {};
+    lista.forEach(d => {
+      let meta = {};
+      try { meta = JSON.parse(d.contenuto || '{}'); } catch { return; }
+      const oid = meta.offerta_id;
+      if (!oid) return;
+      if (!m[oid] || new Date(d.created_at) > new Date(m[oid].data))
+        m[oid] = { stato: d.stato, doc_id: d.id, data: d.created_at };
+    });
+    statiFirma = m;
+  } catch(e) { console.warn('Stati firma:', e.message); }
+}
+
+function bottoneFirma(o) {
+  if (!firmaDisponibile()) return '';
+  const f = statiFirma[o.id];
+  if (f && f.stato === 'firmato')
+    return `<span class="badge-firmato" title="Firmato — archiviato in Documenti Firmati">✍ Firmato</span>`;
+  if (f)
+    return `<button class="btn-firma-sm attesa" onclick="apriFirma(${o.id})" title="Firma già richiesta — riapri nello Staff Dashboard">⏳ In firma</button>`;
+  return `<button class="btn-firma-sm" onclick="apriFirma(${o.id})" title="Richiedi la firma OTP al cliente">✍ Firma OTP</button>`;
+}
+
+// Apre lo Staff Dashboard direttamente sull'offerta scelta
+function apriFirma(id) {
+  window.open(`${STAFF_URL}/#/preventivi?offerta=${id}`, '_blank', 'noopener');
 }
 
 // ─── OPERATORI DELLO STUDIO ───────────────────────────────────
