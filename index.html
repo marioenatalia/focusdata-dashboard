@@ -2049,8 +2049,8 @@ async function deleteOffer(id) {
 }
 
 // ─── GENERATE PREVIEW ─────────────────────────────────────────
-function regimeLabel() {
-  return {forfettario:'Regime Forfettario — Persona Fisica', semplificato:'Ditta Individuale / Soc. Persone — Contabilità Semplificata', ordinario:'Contabilità Ordinaria — SRL / Ditta Individuale / Soc. Persone'}[currentRegime];
+function regimeLabel(reg) {
+  return {forfettario:'Regime Forfettario — Persona Fisica', semplificato:'Ditta Individuale / Soc. Persone — Contabilità Semplificata', ordinario:'Contabilità Ordinaria — SRL / Ditta Individuale / Soc. Persone'}[reg || currentRegime];
 }
 
 // ─── INTESTAZIONE DOCUMENTI (per studio) ──────────────────────
@@ -2098,9 +2098,12 @@ function generatePreview() { renderPreview(collectOffer()); }
 
 function renderPreview(o) {
   const rs      = o.ragione_sociale || '_______________';
+  // Il regime è quello DELL'OFFERTA, non quello selezionato nel form: in ristampa
+  // i due possono differire e leggere il form produrrebbe importi errati.
+  const reg = o.regime || (o.offer_json && o.offer_json.regime) || currentRegime;
   let html = '';
 
-  html += `${testataDocumento()}<div class="doc-hdr"><h2>OFFERTA PROFESSIONALE</h2><p>${regimeLabel()}</p></div>`;
+  html += `${testataDocumento()}<div class="doc-hdr"><h2>OFFERTA PROFESSIONALE</h2><p>${regimeLabel(reg)}</p></div>`;
   html += `<div class="doc-info">
     <div class="doc-cell"><div class="cl">Destinatario</div><div class="cv">
       Spett.le <span class="hi">${rs}</span><br>
@@ -2140,16 +2143,17 @@ function renderPreview(o) {
   // Contabilità
   html += `<div class="sec-bar blue">CONTABILITÀ E DICHIARAZIONI</div>`;
   let baseSub = 0;
-  if (currentRegime==='forfettario') {
-    const c=o.offer_json.contab.canone; baseSub=c;
+  const contab = (o.offer_json && o.offer_json.contab) || {};
+  if (reg==='forfettario') {
+    const c=contab.canone||0; baseSub=c;
     html += `<p style="font-size:13px;margin:7px 0;"><strong>Canone annuale tutto compreso: <span style="color:#1F3864;font-size:15px;">€ ${fmt(c)} + IVA</span></strong></p>
     <p style="font-size:11px;color:#666;">Include: Modello Unico, F24 telematico, Comunicazioni AdE ordinarie.</p>`;
-  } else if (currentRegime==='semplificato') {
-    const c=o.offer_json.contab.canone; baseSub=c;
+  } else if (reg==='semplificato') {
+    const c=contab.canone||0; baseSub=c;
     html += `<p style="font-size:13px;margin:7px 0;"><strong>Canone annuale tutto compreso: <span style="color:#1F3864;font-size:15px;">€ ${fmt(c)} + IVA</span></strong></p>
     <p style="font-size:11px;color:#666;">Include: Registrazione documenti, Liquidazioni IVA, Modello Unico, Prima nota, F24/Uniemens/Durc.</p>`;
   } else {
-    const {tipo,mens,ann,ass,bil,dep}=o.offer_json.contab;
+    const {tipo,mens=0,ann=0,ass=0,bil=0,dep=0}=contab;
     baseSub=ann+ass+bil+dep;
     const tipoL={'ditta':'Ditta individuale / Soc. persone — ordinaria','srl':'SRL / Società di capitali — ordinaria','custom':'Tariffa personalizzata'}[tipo]||tipo;
     html += `<p style="font-size:12px;margin:7px 0;">Tariffa: <strong>${tipoL}</strong> — <strong style="color:#1F3864;">€ ${fmt(mens)}/mese | € ${fmt(ann)}/anno + IVA</strong></p>
