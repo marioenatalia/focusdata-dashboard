@@ -2314,6 +2314,34 @@ window.addEventListener('load', async ()=>{
   applicaLoghiPrevio();
   loadConfig();
   updateTotals();
+
+  // Ingresso dal portale operativo: chi arriva con ?t=<lasciapassare firmato>
+  // ha gia' fatto l'accesso su home.focusdataconsulting.com. Il lasciapassare
+  // si consegna all'API, che lo verifica e risponde con la stessa sessione del
+  // login normale. Poi sparisce dalla barra dell'indirizzo.
+  const _lp = new URLSearchParams(location.search).get('t');
+  if (_lp) {
+    try {
+      const r = await fetch(apiBase() + '/api/auth/sso', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lasciapassare: _lp }),
+        signal: AbortSignal.timeout(60000),
+      });
+      const d = await r.json();
+      if (r.ok) {
+        authToken = d.token;
+        localStorage.setItem('fd_token', authToken);
+        utenteCorrente = d.utente;
+      } else {
+        mostraLogin(d.error || 'Ingresso dal portale non riuscito: entra con email e password.');
+      }
+    } catch (e) {
+      mostraLogin('Ingresso dal portale non riuscito: entra con email e password.');
+    }
+    history.replaceState(null, '', location.pathname);
+  }
+
   // Verifica sessione: se il server richiede il login lo mostra, altrimenti prosegue
   const ok = await caricaStudio();
   if (ok) testApi();
