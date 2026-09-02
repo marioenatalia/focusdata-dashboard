@@ -1290,6 +1290,7 @@ function collectOffer() {
   const refPct  = refTipo === 'tipo_b' ? (parseFloat(document.getElementById('ref_pct').value) || 0) : null;
 
   return {
+    id: editingId,                    // in modifica: consente di mostrare la firma in calce
     ragione_sociale: v('ragione_sociale'),
     telefono:        v('telefono'),
     indirizzo:       v('indirizzo'),
@@ -1474,7 +1475,9 @@ async function reprintOffer(id) {
     if (!r.ok) throw new Error();
     const o = await r.json();
     // Costruisce l'oggetto nel formato atteso da renderPreview
+    // (l'id serve a recuperare gli estremi della firma per il blocco in calce)
     const merged = {
+      id: o.id,
       ragione_sociale: o.ragione_sociale, telefono: o.telefono,
       indirizzo: o.indirizzo, cap_citta: o.cap_citta, piva_cf: o.piva_cf,
       referente: o.referente, settore: o.settore,
@@ -1678,7 +1681,8 @@ async function loadStatiFirma() {
       const oid = meta.offerta_id;
       if (!oid) return;
       if (!m[oid] || new Date(d.created_at) > new Date(m[oid].data))
-        m[oid] = { stato: d.stato, doc_id: d.id, data: d.created_at };
+        m[oid] = { stato: d.stato, doc_id: d.id, data: d.created_at,
+                   firmato_da: d.firmato_da, firmato_il: d.firmato_il, firma_ip: d.firma_ip };
     });
     statiFirma = m;
   } catch(e) { console.warn('Stati firma:', e.message); }
@@ -2075,6 +2079,29 @@ function bloccoProponente(dataStr) {
     ${esc(s.cap_citta || '')}, <strong>${dataStr}</strong>`;
 }
 
+// ─── BLOCCO ACCETTAZIONE / FIRMA IN CALCE ─────────────────────
+// Se l'offerta è stata firmata con OTP mostra gli estremi della firma
+// elettronica (FES eIDAS); altrimenti lo spazio per la firma autografa.
+function bloccoAccettazione(o) {
+  const f = (o && o.id) ? statiFirma[o.id] : null;
+  if (!f || f.stato !== 'firmato') {
+    return `<strong>Per accettazione – Timbro e firma</strong><br><br>Data: ____________<br><br>___________________________`;
+  }
+  const dt = f.firmato_il ? new Date(f.firmato_il) : (f.data ? new Date(f.data) : null);
+  const quando = dt ? dt.toLocaleString('it-IT', {dateStyle:'long', timeStyle:'short'}) : '—';
+  return `<div style="border:1.5px solid #2E7D32;border-radius:6px;padding:10px 12px;background:#F4FBF5;max-width:330px;">
+    <div style="font-size:11px;font-weight:bold;color:#2E7D32;letter-spacing:.4px;margin-bottom:5px;">
+      ✔ ACCETTATA E FIRMATA ELETTRONICAMENTE
+    </div>
+    <div style="font-size:11px;color:#333;line-height:1.65;">
+      ${f.firmato_da ? 'Firmatario: <strong>'+esc(f.firmato_da)+'</strong><br>' : ''}
+      Data e ora: <strong>${quando}</strong><br>
+      ${f.firma_ip ? 'Indirizzo IP: '+esc(f.firma_ip)+'<br>' : ''}
+      <span style="color:#666;">Firma elettronica semplice (FES) con OTP<br>ai sensi del Reg. UE 910/2014 (eIDAS)</span>
+    </div>
+  </div>`;
+}
+
 // Logo dello studio corrente (fallback: logo FocusData incorporato)
 function logoStudio() {
   return (studioCorrente && studioCorrente.logo_base64) || LOGO_B64;
@@ -2258,7 +2285,7 @@ function renderPreview(o) {
     <li>La presente offerta ha validità di 30 giorni dalla data di emissione.</li>
   </ul>
   <div style="margin-top:36px;display:flex;justify-content:space-between;font-size:12px;">
-    <div><strong>Per accettazione – Timbro e firma</strong><br><br>Data: ____________<br><br>___________________________</div>
+    <div>${bloccoAccettazione(o)}</div>
     <div style="text-align:right;"><strong>${nomeStudio}</strong>${nomeStudio==='FocusData Consulting SRL' ? '<br>Amministratore Unico<br><em>Mario Pietri</em>' : '<br>Il Legale Rappresentante<br><br>___________________'}</div>
   </div>`;
 
