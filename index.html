@@ -178,10 +178,17 @@ textarea { resize:vertical; min-height:60px; }
 .total-bar.cyan   { background:#00838F; }
 .total-bar .tv { font-size:17px; }
 @media print {
-  body { background:white; }
-  .top-bar,.config-bar,.container>.card,.container>.grand-bar,.actions,.print-info,#form-area,#saved-area,#preview-toolbar { display:none!important; }
-  #preview-area { display:block!important; box-shadow:none; }
-  .preview-doc { padding:18px; }
+  body { background:white; margin:0; padding:0; }
+  /* Si nasconde TUTTO tranne l'anteprima: elencare le sezioni da nascondere
+     era fragile — ogni sezione aggiunta poi lasciava il proprio padding e
+     produceva righe bianche in cima al foglio. */
+  body > *:not(#preview-area) { display:none!important; }
+  #preview-area { display:block!important; margin:0!important; padding:0!important;
+                  box-shadow:none!important; border:none!important; }
+  #preview-toolbar, .print-info { display:none!important; }
+  .preview-doc { padding:18px; margin:0!important; box-shadow:none!important; }
+  .preview-doc > *:first-child { margin-top:0!important; }
+  @page { margin:12mm; }
 }
 </style>
 </head>
