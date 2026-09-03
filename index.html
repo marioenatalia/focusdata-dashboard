@@ -81,6 +81,8 @@ textarea { resize:vertical; min-height:60px; }
 .btn-firma-sm:hover { background:#006064; }
 .btn-firma-sm.attesa { background:#E65100; }
 .btn-firma-sm.attesa:hover { background:#BF360C; }
+.btn-firma-sm.cns { background:#4A148C; }
+.btn-firma-sm.cns:hover { background:#6A1B9A; }
 .badge-firmato { display:inline-block; background:#E8F5E9; color:#2E7D32; border:1px solid #A5D6A7; border-radius:4px; padding:3px 9px; font-size:11px; font-weight:bold; margin-left:4px; }
 .sec-total { margin-top:8px; text-align:right; font-size:13px; font-weight:bold; color:#1F3864; padding:8px 10px; background:#EEF3FB; border-radius:5px; border:1px solid #C0C8D8; }
 .add-row-btn { margin-top:10px; background:none; border:1px dashed #C0C8D8; border-radius:5px; padding:7px 14px; font-size:12px; color:#555; cursor:pointer; display:flex; align-items:center; gap:6px; width:100%; justify-content:center; transition:all .15s; }
@@ -1680,9 +1682,14 @@ async function loadStatiFirma() {
       try { meta = JSON.parse(d.contenuto || '{}'); } catch { return; }
       const oid = meta.offerta_id;
       if (!oid) return;
-      if (!m[oid] || new Date(d.created_at) > new Date(m[oid].data))
+      if (!m[oid] || new Date(d.created_at) > new Date(m[oid].data)) {
+        const op = d.opzioni || {};
         m[oid] = { stato: d.stato, doc_id: d.id, data: d.created_at,
-                   firmato_da: d.firmato_da, firmato_il: d.firmato_il, firma_ip: d.firma_ip };
+                   firmato_da: d.firmato_da, firmato_il: d.firmato_il, firma_ip: d.firma_ip,
+                   firma_tipo: op.firma_tipo || 'otp', formato: op.formato,
+                   codice_fiscale: op.codice_fiscale, ente_certificatore: op.ente_certificatore,
+                   file_id: op.file_id, file_pdf_id: op.file_pdf_id, file_nome: op.file_nome };
+      }
     });
     statiFirma = m;
   } catch(e) { console.warn('Stati firma:', e.message); }
@@ -1691,11 +1698,52 @@ async function loadStatiFirma() {
 function bottoneFirma(o) {
   if (!firmaDisponibile()) return '';
   const f = statiFirma[o.id];
-  if (f && f.stato === 'firmato')
-    return `<span class="badge-firmato" title="Firmato — archiviato in Documenti Firmati">✍ Firmato</span>`;
+  if (f && f.stato === 'firmato') {
+    const qual = f.firma_tipo === 'qualificata';
+    return `<span class="badge-firmato" title="${qual ? 'Firma digitale qualificata (CNS / dispositivo) — ' + esc(f.formato||'') : 'Firma OTP (FES)'} · archiviato in Documenti Firmati">${qual ? '🔏 Firmato CNS' : '✍ Firmato'}</span>`;
+  }
   if (f)
     return `<button class="btn-firma-sm attesa" onclick="apriFirma(${o.id})" title="Firma già richiesta — riapri nello Staff Dashboard">⏳ In firma</button>`;
-  return `<button class="btn-firma-sm" onclick="apriFirma(${o.id})" title="Richiedi la firma OTP al cliente">✍ Firma OTP</button>`;
+  return `<button class="btn-firma-sm" onclick="apriFirma(${o.id})" title="Richiedi la firma OTP al cliente">✍ Firma OTP</button>
+          <button class="btn-firma-sm cns" onclick="caricaFirmaDigitale(${o.id})" title="Carica il file firmato dal cliente con smart card / token (.pdf o .p7m)">🔏 Firma digitale</button>`;
+}
+
+// ─── FIRMA DIGITALE QUALIFICATA (smart card / token) ──────────
+// Il cliente firma sul proprio dispositivo e ci restituisce il file:
+// qui lo si carica, se ne leggono gli estremi e si archivia intatto.
+function caricaFirmaDigitale(id) {
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = '.pdf,.p7m,application/pdf,application/pkcs7-mime';
+  inp.onchange = async () => {
+    const file = inp.files && inp.files[0];
+    if (!file) return;
+    if (file.size > 18 * 1024 * 1024) { alert('File troppo grande (massimo 18 MB).'); return; }
+    const b64 = await new Promise((ok, ko) => {
+      const fr = new FileReader();
+      fr.onload = () => ok(String(fr.result).split(',')[1]);
+      fr.onerror = () => ko(new Error('Lettura del file non riuscita'));
+      fr.readAsDataURL(file);
+    });
+    try {
+      const r = await fetch(`${apiBase()}/api/offerte/${id}/firma-digitale`, {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ nome: file.name, base64: b64 }),
+      });
+      const d = await r.json();
+      if (!r.ok) { alert('⚠ ' + (d.error || 'Errore') + (d.formato ? '\n\nFormato rilevato: ' + d.formato : '')); return; }
+      const f = (d.firmatari && d.firmatari[0]) || {};
+      alert('✔ Firma digitale acquisita\n\n' +
+            'Firmatario: ' + (f.nome_firmatario || '—') + '\n' +
+            (f.codice_fiscale ? 'Codice fiscale: ' + f.codice_fiscale + '\n' : '') +
+            'Ente certificatore: ' + (f.ente_certificatore || '—') + '\n' +
+            'Formato: ' + d.formato + '\n' +
+            'Data firma: ' + new Date(d.data_firma).toLocaleString('it-IT') + '\n\n' +
+            'Il file è archiviato in Documenti Firmati e l\'offerta risulta accettata.');
+      loadOffers();
+    } catch(e) { alert('Errore caricamento: ' + e.message); }
+  };
+  inp.click();
 }
 
 // Apre lo Staff Dashboard direttamente sull'offerta scelta
@@ -2089,15 +2137,25 @@ function bloccoAccettazione(o) {
   }
   const dt = f.firmato_il ? new Date(f.firmato_il) : (f.data ? new Date(f.data) : null);
   const quando = dt ? dt.toLocaleString('it-IT', {dateStyle:'long', timeStyle:'short'}) : '—';
-  return `<div style="border:1.5px solid #2E7D32;border-radius:6px;padding:10px 12px;background:#F4FBF5;max-width:330px;">
-    <div style="font-size:11px;font-weight:bold;color:#2E7D32;letter-spacing:.4px;margin-bottom:5px;">
-      ✔ ACCETTATA E FIRMATA ELETTRONICAMENTE
-    </div>
+  const qualificata = f.firma_tipo === 'qualificata';
+  const titolo = qualificata
+    ? '🔏 ACCETTATA E FIRMATA DIGITALMENTE'
+    : '✔ ACCETTATA E FIRMATA ELETTRONICAMENTE';
+  const natura = qualificata
+    ? `<strong>Firmato digitalmente con CNS / dispositivo di firma</strong><br>
+       Firma elettronica qualificata (${esc(f.formato || 'firma digitale')})<br>
+       ai sensi dell'art. 24 CAD e del Reg. UE 910/2014 (eIDAS)<br>
+       Documento firmato conservato in originale`
+    : `Firma elettronica semplice (FES) con OTP<br>ai sensi del Reg. UE 910/2014 (eIDAS)`;
+  return `<div style="border:1.5px solid #2E7D32;border-radius:6px;padding:10px 12px;background:#F4FBF5;max-width:340px;">
+    <div style="font-size:11px;font-weight:bold;color:#2E7D32;letter-spacing:.4px;margin-bottom:5px;">${titolo}</div>
     <div style="font-size:11px;color:#333;line-height:1.65;">
       ${f.firmato_da ? 'Firmatario: <strong>'+esc(f.firmato_da)+'</strong><br>' : ''}
+      ${qualificata && f.codice_fiscale ? 'Codice fiscale: <strong>'+esc(f.codice_fiscale)+'</strong><br>' : ''}
       Data e ora: <strong>${quando}</strong><br>
-      ${f.firma_ip ? 'Indirizzo IP: '+esc(f.firma_ip)+'<br>' : ''}
-      <span style="color:#666;">Firma elettronica semplice (FES) con OTP<br>ai sensi del Reg. UE 910/2014 (eIDAS)</span>
+      ${qualificata && f.ente_certificatore ? 'Certificatore: '+esc(f.ente_certificatore)+'<br>' : ''}
+      ${!qualificata && f.firma_ip ? 'Indirizzo IP: '+esc(f.firma_ip)+'<br>' : ''}
+      <span style="color:#666;">${natura}</span>
     </div>
   </div>`;
 }
