@@ -85,6 +85,8 @@ textarea { resize:vertical; min-height:60px; }
 .btn-firma-sm.cns:hover { background:#6A1B9A; }
 .btn-firma-sm.istr { background:#F5F5F5; color:#444; border:1px solid #C0C8D8; }
 .btn-firma-sm.istr:hover { background:#E8EDF5; }
+.btn-firma-sm.scarica { background:#00695C; }
+.btn-firma-sm.scarica:hover { background:#004D40; }
 .badge-firmato { display:inline-block; background:#E8F5E9; color:#2E7D32; border:1px solid #A5D6A7; border-radius:4px; padding:3px 9px; font-size:11px; font-weight:bold; margin-left:4px; }
 .sec-total { margin-top:8px; text-align:right; font-size:13px; font-weight:bold; color:#1F3864; padding:8px 10px; background:#EEF3FB; border-radius:5px; border:1px solid #C0C8D8; }
 .add-row-btn { margin-top:10px; background:none; border:1px dashed #C0C8D8; border-radius:5px; padding:7px 14px; font-size:12px; color:#555; cursor:pointer; display:flex; align-items:center; gap:6px; width:100%; justify-content:center; transition:all .15s; }
@@ -882,7 +884,7 @@ textarea { resize:vertical; min-height:60px; }
       Nella finestra di stampa: <strong>Altre impostazioni → togli “Intestazioni e piè di pagina”</strong>
     </span>
     <div style="display:flex;gap:8px;margin-left:auto;">
-      <button class="btn btn-blue" onclick="window.print()" style="padding:7px 16px;font-size:12px;">📥 Scarica PDF</button>
+      <button class="btn btn-blue" onclick="stampaOfferta()" style="padding:7px 16px;font-size:12px;">📥 Scarica PDF</button>
       <button class="btn btn-gray" onclick="document.getElementById('preview-area').style.display='none';window.scrollTo(0,0);" style="padding:7px 14px;font-size:12px;">✕ Chiudi</button>
     </div>
   </div>
@@ -1713,14 +1715,20 @@ async function loadStatiFirma() {
 function bottoneFirma(o) {
   if (!firmaDisponibile()) return '';
   const f = statiFirma[o.id];
+  // Il caricamento del file firmato resta SEMPRE disponibile: serve anche per
+  // sostituire una firma con una nuova versione del documento.
+  const btnCarica = `<button class="btn-firma-sm cns" onclick="caricaFirmaDigitale(${o.id})" title="Carica il file firmato dal cliente (PAdES .pdf, accettato anche .p7m)">🔏 ${f && f.stato==='firmato' ? 'Sostituisci firma' : 'Carica firma'}</button>`;
+
   if (f && f.stato === 'firmato') {
     const qual = f.firma_tipo === 'qualificata';
-    return `<span class="badge-firmato" title="${qual ? 'Firma digitale qualificata (CNS / dispositivo) — ' + esc(f.formato||'') : 'Firma OTP (FES)'} · archiviato in Documenti Firmati">${qual ? '🔏 Firmato CNS' : '✍ Firmato'}</span>`;
+    const scarica = f.file_id
+      ? `<button class="btn-firma-sm scarica" onclick="scaricaFirmato('${f.file_id}')" title="Apri il documento firmato originale (con valore legale)">⬇ PDF firmato</button>` : '';
+    return `<span class="badge-firmato" title="${qual ? 'Firma digitale qualificata (CNS / dispositivo) — ' + esc(f.formato||'') : 'Firma OTP (FES)'} · archiviato in Documenti Firmati">${qual ? '🔏 Firmato CNS' : '✍ Firmato'}</span>${scarica}${btnCarica}`;
   }
   if (f)
-    return `<button class="btn-firma-sm attesa" onclick="apriFirma(${o.id})" title="Firma già richiesta — riapri nello Staff Dashboard">⏳ In firma</button>`;
+    return `<button class="btn-firma-sm attesa" onclick="apriFirma(${o.id})" title="Firma OTP già richiesta — riapri nello Staff Dashboard">⏳ In firma</button>${btnCarica}`;
   return `<button class="btn-firma-sm" onclick="apriFirma(${o.id})" title="Richiedi la firma OTP al cliente">✍ Firma OTP</button>
-          <button class="btn-firma-sm cns" onclick="caricaFirmaDigitale(${o.id})" title="Carica il file firmato dal cliente con smart card / token (PAdES .pdf, accettato anche .p7m)">🔏 Firma digitale</button>
+          ${btnCarica}
           <button class="btn-firma-sm istr" onclick="istruzioniFirma()" title="Testo da inviare al cliente per farlo firmare in PAdES">📄 Istruzioni firma</button>`;
 }
 
@@ -1760,6 +1768,12 @@ function istruzioniFirma() {
         padding:9px 18px;font-size:13px;cursor:pointer;">📋 Copia il testo</button>
     </div>`);
   w.document.close();
+}
+
+// Apre il documento firmato ORIGINALE: è quello con valore legale, con la
+// firma verificabile in Adobe. La ristampa da PREVIO è solo una copia di lavoro.
+function scaricaFirmato(fileId) {
+  window.open(apiBase() + '/api/staff/files/' + fileId, '_blank', 'noopener');
 }
 
 // ─── FIRMA DIGITALE QUALIFICATA (smart card / token) ──────────
@@ -2244,8 +2258,20 @@ function testataDocumento() {
 
 function generatePreview() { renderPreview(collectOffer()); }
 
+// Il browser usa il titolo della pagina come nome del PDF: lo si imposta
+// temporaneamente sul nome del cliente, così il file esce già intestato a lui.
+let clienteAnteprima = '';
+function stampaOfferta() {
+  const orig = document.title;
+  const nome = (clienteAnteprima || 'Offerta').replace(/[\\/:*?"<>|]/g, '-').trim();
+  document.title = 'Offerta - ' + nome;
+  window.print();
+  setTimeout(() => { document.title = orig; }, 800);
+}
+
 function renderPreview(o) {
   const rs      = o.ragione_sociale || '_______________';
+  clienteAnteprima = o.ragione_sociale || '';
   // Il regime è quello DELL'OFFERTA, non quello selezionato nel form: in ristampa
   // i due possono differire e leggere il form produrrebbe importi errati.
   const reg = o.regime || (o.offer_json && o.offer_json.regime) || currentRegime;
