@@ -186,9 +186,12 @@ textarea { resize:vertical; min-height:60px; }
   #preview-area { display:block!important; margin:0!important; padding:0!important;
                   box-shadow:none!important; border:none!important; }
   #preview-toolbar, .print-info { display:none!important; }
-  .preview-doc { padding:18px; margin:0!important; box-shadow:none!important; }
-  .preview-doc > *:first-child { margin-top:0!important; }
-  @page { margin:12mm; }
+  .preview-doc { padding:0!important; margin:0!important; box-shadow:none!important; }
+  .preview-doc > *:first-child { margin-top:0!important; padding-top:0!important; }
+  /* Margine ridotto in alto: l'intestazione parte subito dopo il bordo pagina.
+     Nota: se il browser stampa anche la propria intestazione (data/URL) resta
+     una banda vuota che NON dipende da qui, ma dall'opzione del dialogo stampa. */
+  @page { margin:8mm 12mm 12mm; }
 }
 </style>
 </head>
@@ -875,7 +878,10 @@ textarea { resize:vertical; min-height:60px; }
 <div id="preview-area">
   <div id="preview-toolbar" style="background:#E8EDF5;padding:12px 22px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #C0C8D8;">
     <strong style="color:#1F3864;font-size:13px;">Offerta — FocusData Consulting SRL</strong>
-    <div style="display:flex;gap:8px;">
+    <span style="font-size:11px;color:#8a6d1f;background:#FFF8E1;border:1px solid #F0C36D;border-radius:5px;padding:3px 9px;margin-left:12px;">
+      Nella finestra di stampa: <strong>Altre impostazioni → togli “Intestazioni e piè di pagina”</strong>
+    </span>
+    <div style="display:flex;gap:8px;margin-left:auto;">
       <button class="btn btn-blue" onclick="window.print()" style="padding:7px 16px;font-size:12px;">📥 Scarica PDF</button>
       <button class="btn btn-gray" onclick="document.getElementById('preview-area').style.display='none';window.scrollTo(0,0);" style="padding:7px 14px;font-size:12px;">✕ Chiudi</button>
     </div>
