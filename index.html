@@ -89,6 +89,11 @@ textarea { resize:vertical; min-height:60px; }
 .btn-firma-sm.scarica:hover { background:#004D40; }
 .btn-firma-sm.attest { background:#1565C0; }
 .btn-firma-sm.attest:hover { background:#0D47A1; }
+/* I pulsanti azione vanno a capo invece di uscire dalla cella: con l'offerta
+   firmata diventano cinque e in una riga sola verrebbero tagliati. */
+.azioni-riga { display:flex; flex-wrap:wrap; gap:4px; align-items:center; min-width:230px; }
+.azioni-riga .btn-firma-sm { margin-left:0; }
+.azioni-riga .badge-firmato { margin-left:0; }
 .badge-firmato { display:inline-block; background:#E8F5E9; color:#2E7D32; border:1px solid #A5D6A7; border-radius:4px; padding:3px 9px; font-size:11px; font-weight:bold; margin-left:4px; }
 .sec-total { margin-top:8px; text-align:right; font-size:13px; font-weight:bold; color:#1F3864; padding:8px 10px; background:#EEF3FB; border-radius:5px; border:1px solid #C0C8D8; }
 .add-row-btn { margin-top:10px; background:none; border:1px dashed #C0C8D8; border-radius:5px; padding:7px 14px; font-size:12px; color:#555; cursor:pointer; display:flex; align-items:center; gap:6px; width:100%; justify-content:center; transition:all .15s; }
@@ -1540,10 +1545,12 @@ async function loadOffers() {
           <select style="font-size:11px;" onchange="changeStato(${o.id}, this.value)">${opts}</select>
           <button class="btn-del-sm" onclick="deleteOffer(${o.id})">✕</button>
         </td>
-        <td style="white-space:nowrap;">
-          <button class="btn-edit-sm" onclick="loadOfferIntoForm(${o.id})" title="Carica nel modulo per modificare">✏ Modifica</button>
-          <button class="btn-reprint-sm" style="margin-left:4px;" onclick="reprintOffer(${o.id})" title="Genera anteprima da offerta salvata">🖨 Ristampa</button>
-          ${bottoneFirma(o)}
+        <td>
+          <div class="azioni-riga">
+            <button class="btn-edit-sm" onclick="loadOfferIntoForm(${o.id})" title="Carica nel modulo per modificare">✏ Modifica</button>
+            <button class="btn-reprint-sm" onclick="reprintOffer(${o.id})" title="Genera anteprima da offerta salvata">🖨 Ristampa</button>
+            ${bottoneFirma(o)}
+          </div>
         </td>
       </tr>`;
     }).join('');
@@ -1719,13 +1726,13 @@ function bottoneFirma(o) {
   const f = statiFirma[o.id];
   // Il caricamento del file firmato resta SEMPRE disponibile: serve anche per
   // sostituire una firma con una nuova versione del documento.
-  const btnCarica = `<button class="btn-firma-sm cns" onclick="caricaFirmaDigitale(${o.id})" title="Carica il file firmato dal cliente (PAdES .pdf, accettato anche .p7m)">🔏 ${f && f.stato==='firmato' ? 'Sostituisci firma' : 'Carica firma'}</button>`;
+  const btnCarica = `<button class="btn-firma-sm cns" onclick="caricaFirmaDigitale(${o.id})" title="Carica il file firmato dal cliente con smart card / token (PAdES .pdf, accettato anche .p7m)">🔏 ${f && f.stato==='firmato' ? 'Sostituisci' : 'Carica firma'}</button>`;
 
   if (f && f.stato === 'firmato') {
     const qual = f.firma_tipo === 'qualificata';
     const scarica = f.file_id
-      ? `<button class="btn-firma-sm scarica" onclick="scaricaFirmato('${f.file_id}')" title="Apri il documento firmato ORIGINALE — è quello con valore legale, ma la firma non si vede stampata">⬇ Originale firmato</button>
-         <button class="btn-firma-sm attest" onclick="copiaAttestata(${o.id})" title="Copia leggibile con gli estremi della firma stampati, da usare su carta">📑 Copia con attestazione</button>` : '';
+      ? `<button class="btn-firma-sm scarica" onclick="scaricaFirmato('${f.file_id}')" title="Apri il documento firmato ORIGINALE: è quello con valore legale, ma la firma non si vede stampata">⬇ Originale</button>
+         <button class="btn-firma-sm attest" onclick="copiaAttestata(${o.id})" title="Copia leggibile con gli estremi della firma stampati in fondo — è questa da stampare su carta">🖨 Stampa con firma</button>` : '';
     return `<span class="badge-firmato" title="${qual ? 'Firma digitale qualificata (CNS / dispositivo) — ' + esc(f.formato||'') : 'Firma OTP (FES)'} · archiviato in Documenti Firmati">${qual ? '🔏 Firmato CNS' : '✍ Firmato'}</span>${scarica}${btnCarica}`;
   }
   if (f)
