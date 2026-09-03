@@ -83,6 +83,8 @@ textarea { resize:vertical; min-height:60px; }
 .btn-firma-sm.attesa:hover { background:#BF360C; }
 .btn-firma-sm.cns { background:#4A148C; }
 .btn-firma-sm.cns:hover { background:#6A1B9A; }
+.btn-firma-sm.istr { background:#F5F5F5; color:#444; border:1px solid #C0C8D8; }
+.btn-firma-sm.istr:hover { background:#E8EDF5; }
 .badge-firmato { display:inline-block; background:#E8F5E9; color:#2E7D32; border:1px solid #A5D6A7; border-radius:4px; padding:3px 9px; font-size:11px; font-weight:bold; margin-left:4px; }
 .sec-total { margin-top:8px; text-align:right; font-size:13px; font-weight:bold; color:#1F3864; padding:8px 10px; background:#EEF3FB; border-radius:5px; border:1px solid #C0C8D8; }
 .add-row-btn { margin-top:10px; background:none; border:1px dashed #C0C8D8; border-radius:5px; padding:7px 14px; font-size:12px; color:#555; cursor:pointer; display:flex; align-items:center; gap:6px; width:100%; justify-content:center; transition:all .15s; }
@@ -1705,7 +1707,46 @@ function bottoneFirma(o) {
   if (f)
     return `<button class="btn-firma-sm attesa" onclick="apriFirma(${o.id})" title="Firma già richiesta — riapri nello Staff Dashboard">⏳ In firma</button>`;
   return `<button class="btn-firma-sm" onclick="apriFirma(${o.id})" title="Richiedi la firma OTP al cliente">✍ Firma OTP</button>
-          <button class="btn-firma-sm cns" onclick="caricaFirmaDigitale(${o.id})" title="Carica il file firmato dal cliente con smart card / token (.pdf o .p7m)">🔏 Firma digitale</button>`;
+          <button class="btn-firma-sm cns" onclick="caricaFirmaDigitale(${o.id})" title="Carica il file firmato dal cliente con smart card / token (PAdES .pdf, accettato anche .p7m)">🔏 Firma digitale</button>
+          <button class="btn-firma-sm istr" onclick="istruzioniFirma()" title="Testo da inviare al cliente per farlo firmare in PAdES">📄 Istruzioni firma</button>`;
+}
+
+// Istruzioni pronte da inviare al cliente che firma con la propria chiavetta.
+// Obiettivo: ottenere PAdES (.pdf) invece di CAdES (.p7m).
+const ISTRUZIONI_PADES =
+`Come firmare digitalmente il preventivo
+
+Le chiediamo cortesemente di firmare il PDF allegato in formato PAdES,
+così il documento resta un normale file .pdf leggibile da chiunque e la
+firma è verificabile direttamente in Adobe Reader.
+
+In pratica, nel software di firma scelga "PDF" o "PAdES" invece di "P7M" o "CAdES":
+
+• Aruba Sign — trascini il PDF, poi in "Tipo di firma" scelga "Firma PDF (PAdES)"
+• Dike GoSign — apra il file, premere "Firma", poi selezionare "PAdES" tra i formati
+• FirmaCerta — dopo aver scelto il file, nella tendina formato selezioni "PAdES"
+• Altri software — cerchi la voce "firma PDF" o "PAdES"
+
+Inserisca il PIN del dispositivo e salvi. Otterrà un file .pdf (non .p7m)
+da restituirci via email o PEC.
+
+Nota: serve il certificato di FIRMA (sottoscrizione) del dispositivo, non
+quello di sola autenticazione CNS.`;
+
+function istruzioniFirma() {
+  const w = window.open('', '_blank', 'width=620,height=680');
+  if (!w) { alert(ISTRUZIONI_PADES); return; }
+  w.document.write(`<title>Istruzioni firma PAdES</title>
+    <div style="font-family:Segoe UI,Arial,sans-serif;padding:22px;max-width:560px;">
+      <h2 style="color:#1F3864;font-size:17px;margin:0 0 4px;">Istruzioni per il cliente</h2>
+      <p style="font-size:12px;color:#777;margin:0 0 14px;">Testo pronto da incollare in email o WhatsApp.</p>
+      <textarea id="t" style="width:100%;height:400px;font-family:Consolas,monospace;font-size:12px;
+        border:1px solid #C0C8D8;border-radius:6px;padding:11px;">${esc(ISTRUZIONI_PADES)}</textarea>
+      <button onclick="document.getElementById('t').select();document.execCommand('copy');this.textContent='✓ Copiato'"
+        style="margin-top:10px;background:#1F3864;color:#fff;border:none;border-radius:6px;
+        padding:9px 18px;font-size:13px;cursor:pointer;">📋 Copia il testo</button>
+    </div>`);
+  w.document.close();
 }
 
 // ─── FIRMA DIGITALE QUALIFICATA (smart card / token) ──────────
@@ -1733,13 +1774,17 @@ function caricaFirmaDigitale(id) {
       const d = await r.json();
       if (!r.ok) { alert('⚠ ' + (d.error || 'Errore') + (d.formato ? '\n\nFormato rilevato: ' + d.formato : '')); return; }
       const f = (d.firmatari && d.firmatari[0]) || {};
+      const cades = /p7m/i.test(d.formato || '');
       alert('✔ Firma digitale acquisita\n\n' +
             'Firmatario: ' + (f.nome_firmatario || '—') + '\n' +
             (f.codice_fiscale ? 'Codice fiscale: ' + f.codice_fiscale + '\n' : '') +
             'Ente certificatore: ' + (f.ente_certificatore || '—') + '\n' +
             'Formato: ' + d.formato + '\n' +
             'Data firma: ' + new Date(d.data_firma).toLocaleString('it-IT') + '\n\n' +
-            'Il file è archiviato in Documenti Firmati e l\'offerta risulta accettata.');
+            'Il file è archiviato in Documenti Firmati e l\'offerta risulta accettata.' +
+            (cades ? '\n\n⚠ Il cliente ha firmato in CAdES (.p7m): il file richiede un software di firma per essere aperto. ' +
+                     'Ho archiviato anche il PDF estratto dalla busta. Per i prossimi documenti puoi chiedergli di firmare ' +
+                     'in PAdES — usa "📄 Istruzioni firma" per il testo da inviargli.' : ''));
       loadOffers();
     } catch(e) { alert('Errore caricamento: ' + e.message); }
   };
@@ -2133,7 +2178,12 @@ function bloccoProponente(dataStr) {
 function bloccoAccettazione(o) {
   const f = (o && o.id) ? statiFirma[o.id] : null;
   if (!f || f.stato !== 'firmato') {
-    return `<strong>Per accettazione – Timbro e firma</strong><br><br>Data: ____________<br><br>___________________________`;
+    return `<strong>Per accettazione – Timbro e firma</strong><br><br>Data: ____________<br><br>___________________________
+      <div style="margin-top:9px;font-size:9.5px;color:#777;line-height:1.5;max-width:330px;">
+        In alternativa alla firma autografa il documento può essere restituito
+        <strong>firmato digitalmente in formato PAdES</strong> (il file resta un .pdf,
+        con la firma visibile in Adobe Reader).
+      </div>`;
   }
   const dt = f.firmato_il ? new Date(f.firmato_il) : (f.data ? new Date(f.data) : null);
   const quando = dt ? dt.toLocaleString('it-IT', {dateStyle:'long', timeStyle:'short'}) : '—';
