@@ -92,6 +92,21 @@ textarea { resize:vertical; min-height:60px; }
 /* I pulsanti azione vanno a capo invece di uscire dalla cella: con l'offerta
    firmata diventano cinque e in una riga sola verrebbero tagliati. */
 .azioni-riga { display:flex; flex-wrap:wrap; gap:4px; align-items:center; min-width:230px; }
+/* Ricerca cliente esistente */
+.cerca-cliente { position:relative; margin-bottom:14px; }
+.cerca-cliente input { width:100%; padding:10px 12px; font-size:14px; border:1.5px solid #9FB3D1; border-radius:8px; background:#F7F9FC; }
+.cerca-cliente input:focus { outline:none; border-color:#1F3864; background:#fff; }
+.cerca-risultati { position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:50; background:#fff;
+  border:1px solid #C0C8D8; border-radius:8px; box-shadow:0 8px 24px rgba(31,56,100,.18); max-height:380px; overflow:auto; }
+.cerca-voce { padding:9px 12px; border-bottom:1px solid #EEF2F8; cursor:pointer; }
+.cerca-voce:last-child { border-bottom:none; }
+.cerca-voce:hover, .cerca-voce.attiva { background:#EEF3FB; }
+.cerca-voce .cv-nome { font-weight:600; color:#1F3864; font-size:13px; }
+.cerca-voce .cv-dati { font-size:11.5px; color:#667; margin-top:2px; }
+.cerca-voce .cv-tag { display:inline-block; font-size:10px; font-weight:600; border-radius:9px; padding:1px 7px; margin-left:6px; vertical-align:1px; }
+.cv-tag.anag { background:#E3F2FD; color:#1565C0; }
+.cv-tag.off  { background:#E8F5E9; color:#2E7D32; }
+.cerca-vuoto { padding:12px; font-size:12px; color:#888; }
 .azioni-riga .btn-firma-sm { margin-left:0; }
 .azioni-riga .badge-firmato { margin-left:0; }
 .badge-firmato { display:inline-block; background:#E8F5E9; color:#2E7D32; border:1px solid #A5D6A7; border-radius:4px; padding:3px 9px; font-size:11px; font-weight:bold; margin-left:4px; }
@@ -259,6 +274,14 @@ textarea { resize:vertical; min-height:60px; }
   <div class="card">
     <div class="card-header">Dati Cliente</div>
     <div class="card-body">
+      <!-- RICERCA CLIENTE ESISTENTE -->
+      <div class="cerca-cliente">
+        <input type="search" id="cerca_cliente" autocomplete="off"
+               placeholder="🔍 Cerca un cliente esistente per nome o P.IVA — per rifare le condizioni"
+               oninput="cercaClienteDebounce()" onkeydown="tastiCercaCliente(event)" />
+        <div id="cerca_risultati" class="cerca-risultati" style="display:none;"></div>
+      </div>
+      <div id="cliente_sel_banner" style="display:none;"></div>
       <div class="grid-2">
         <div><label>Ragione Sociale / Nome *</label><input type="text" id="ragione_sociale" placeholder="Es. Arshdeep" /></div>
         <div><label>Telefono</label><input type="text" id="telefono" placeholder="3896958422" /></div>
@@ -1260,6 +1283,146 @@ function toggleSdd() {
   document.getElementById('sdd_box').style.opacity = on ? '1' : '.45';
   document.getElementById('sdd_off_msg').style.display = on ? 'none' : 'block';
 }
+
+// ─── RICERCA CLIENTE ESISTENTE ────────────────────────────────
+// Cerca nell'anagrafica Staff (solo studio FocusData) e nelle offerte già fatte,
+// per preparare nuove condizioni a un cliente noto senza riscriverne i dati.
+// Si crea SEMPRE una nuova offerta: quella precedente resta invariata.
+let cercaTimer = null, cercaRisultati = [], cercaIndice = -1, clienteSelezionato = null;
+const STATI_LABEL = { bozza:'bozza', inviata:'inviata', accettata:'accettata', rifiutata:'rifiutata', scaduta:'scaduta' };
+
+function cercaClienteDebounce() {
+  clearTimeout(cercaTimer);
+  cercaTimer = setTimeout(cercaCliente, 250);
+}
+
+async function cercaCliente() {
+  const q = document.getElementById('cerca_cliente').value.trim();
+  const box = document.getElementById('cerca_risultati');
+  if (q.length < 2) { box.style.display = 'none'; cercaRisultati = []; return; }
+  const base = apiBase();
+  if (!base) return;
+  try {
+    const r = await fetch(`${base}/api/clienti-ricerca?q=${encodeURIComponent(q)}`);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const lista = await r.json();
+    // una risposta lenta non deve sovrascrivere la ricerca più recente
+    if (document.getElementById('cerca_cliente').value.trim() !== q) return;
+    cercaRisultati = lista;
+  } catch(e) {
+    box.innerHTML = `<div class="cerca-vuoto">Ricerca non disponibile (${esc(e.message)}). Sei collegato?</div>`;
+    box.style.display = 'block';
+    return;
+  }
+  cercaIndice = -1;
+  mostraRisultatiCerca();
+}
+
+function dataBreve(d) {
+  if (!d) return '';
+  const x = new Date(String(d).length === 10 ? d + 'T00:00:00' : d);
+  return isNaN(x) ? '' : x.toLocaleDateString('it-IT');
+}
+
+function mostraRisultatiCerca() {
+  const box = document.getElementById('cerca_risultati');
+  if (!cercaRisultati.length) {
+    box.innerHTML = '<div class="cerca-vuoto">Nessun cliente trovato. Compila i dati qui sotto per un cliente nuovo.</div>';
+    box.style.display = 'block';
+    return;
+  }
+  box.innerHTML = cercaRisultati.map((c, i) => {
+    const tag = [];
+    if (c.fonti.includes('anagrafica')) tag.push('<span class="cv-tag anag">anagrafica</span>');
+    if (c.n_offerte) tag.push(`<span class="cv-tag off">${c.n_offerte} ${c.n_offerte === 1 ? 'offerta' : 'offerte'}</span>`);
+    const dati = [c.piva_cf && ('P.IVA/CF ' + esc(c.piva_cf)), esc(c.cap_citta), esc(c.settore)].filter(Boolean).join(' · ');
+    const ultima = c.ultima_offerta_id
+      ? `<div class="cv-dati">Ultima offerta del ${dataBreve(c.ultima_offerta_data)} — € ${fmt(c.ultima_offerta_totale || 0)} — ${STATI_LABEL[c.ultima_offerta_stato] || c.ultima_offerta_stato}</div>` : '';
+    return `<div class="cerca-voce${i === cercaIndice ? ' attiva' : ''}" onmousedown="event.preventDefault();selezionaCliente(${i})">
+      <div class="cv-nome">${esc(c.ragione_sociale)}${tag.join('')}</div>
+      ${dati ? `<div class="cv-dati">${dati}</div>` : ''}${ultima}
+    </div>`;
+  }).join('');
+  box.style.display = 'block';
+}
+
+function tastiCercaCliente(e) {
+  const box = document.getElementById('cerca_risultati');
+  if (e.key === 'Escape') { box.style.display = 'none'; return; }
+  if (!cercaRisultati.length || box.style.display === 'none') return;
+  if (e.key === 'ArrowDown') { e.preventDefault(); cercaIndice = Math.min(cercaIndice + 1, cercaRisultati.length - 1); mostraRisultatiCerca(); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); cercaIndice = Math.max(cercaIndice - 1, 0); mostraRisultatiCerca(); }
+  else if (e.key === 'Enter') { e.preventDefault(); selezionaCliente(cercaIndice >= 0 ? cercaIndice : 0); }
+}
+
+// soloPieni: dopo aver copiato una vecchia offerta, l'anagrafica aggiorna i
+// dati ma un suo campo vuoto non deve cancellare quello dell'offerta
+function compilaDatiCliente(c, soloPieni) {
+  const campi = { ragione_sociale:c.ragione_sociale, telefono:c.telefono, indirizzo:c.indirizzo,
+                  cap_citta:c.cap_citta, piva_cf:c.piva_cf, referente:c.referente, settore:c.settore };
+  for (const [id, val] of Object.entries(campi)) {
+    if (soloPieni && !val) continue;
+    const el = document.getElementById(id);
+    if (el) el.value = val || '';
+  }
+  document.getElementById('data_offerta').value = new Date().toISOString().split('T')[0];
+}
+
+function bannerCliente(html) {
+  const b = document.getElementById('cliente_sel_banner');
+  b.style.cssText = 'display:block;background:#EEF6EE;border:1px solid #A5D6A7;border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12.5px;color:#1B5E20;';
+  b.innerHTML = html + `<span onclick="chiudiBannerCliente()" style="float:right;cursor:pointer;color:#777;margin-left:10px;" title="Chiudi">✕</span>`;
+}
+function chiudiBannerCliente() {
+  const b = document.getElementById('cliente_sel_banner');
+  b.style.display = 'none'; b.innerHTML = '';
+}
+
+function selezionaCliente(i) {
+  const c = cercaRisultati[i];
+  if (!c) return;
+  if (editingId && !confirm(`Stai modificando l'offerta #${editingId}.\n\nVuoi uscire dalla modifica e preparare una NUOVA offerta per ${c.ragione_sociale}?`)) return;
+  setEditMode(null);
+  clienteSelezionato = c;
+  compilaDatiCliente(c, false);
+  document.getElementById('cerca_cliente').value = '';
+  document.getElementById('cerca_risultati').style.display = 'none';
+  const fonte = c.fonti.includes('anagrafica') ? "dall'anagrafica clienti" : "dall'ultima offerta";
+  if (c.ultima_offerta_id) {
+    bannerCliente(`✔ Dati di <strong>${esc(c.ragione_sociale)}</strong> caricati ${fonte}.<br>
+      Il cliente ha già <strong>${c.n_offerte} ${c.n_offerte === 1 ? 'offerta' : 'offerte'}</strong> — l'ultima del
+      ${dataBreve(c.ultima_offerta_data)} per € ${fmt(c.ultima_offerta_totale || 0)} (${STATI_LABEL[c.ultima_offerta_stato] || c.ultima_offerta_stato}).
+      <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-green" style="padding:5px 12px;font-size:12px;" onclick="partiDaUltimaOfferta()">↺ Parti dalle condizioni dell'ultima offerta</button>
+        <span style="color:#555;align-self:center;">oppure imposta condizioni nuove qui sotto.</span>
+      </div>`);
+  } else {
+    bannerCliente(`✔ Dati di <strong>${esc(c.ragione_sociale)}</strong> caricati ${fonte}. Nessuna offerta precedente: imposta le condizioni qui sotto.`);
+  }
+}
+
+// Copia tariffe e servizi dell'ultima offerta come punto di partenza, ma come
+// NUOVA offerta: al salvataggio se ne crea un'altra e la precedente resta intatta.
+async function partiDaUltimaOfferta() {
+  const c = clienteSelezionato;
+  if (!c || !c.ultima_offerta_id) return;
+  await loadOfferIntoForm(c.ultima_offerta_id);
+  setEditMode(null);
+  compilaDatiCliente(c, true);   // i dati d'anagrafica, più aggiornati, hanno la precedenza
+  impostaScadenze([]);           // le date delle vecchie scadenze non valgono più
+  updateTotals();
+  bannerCliente(`↺ Condizioni copiate dall'offerta <strong>#${c.ultima_offerta_id}</strong> del ${dataBreve(c.ultima_offerta_data)}.
+    Modificale e premi <strong>Salva</strong>: verrà creata una <strong>nuova offerta</strong>, la #${c.ultima_offerta_id} resta invariata.
+    Le scadenze di pagamento concordate non sono state copiate (le date vanno reinserite).`);
+  document.getElementById('cliente_sel_banner').scrollIntoView({behavior:'smooth', block:'center'});
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest || !e.target.closest('.cerca-cliente')) {
+    const b = document.getElementById('cerca_risultati');
+    if (b) b.style.display = 'none';
+  }
+});
 
 // ─── SCADENZE DI PAGAMENTO CONCORDATE ─────────────────────────
 // Righe libere (data, descrizione, importo) che si AFFIANCANO alla fatturazione
@@ -2607,6 +2770,9 @@ function resetForm() {
   document.getElementById('sdd_on').checked = true;
   document.getElementById('pag_alternativo').value = 'pagamento a mezzo bonifico bancario a ricevimento fattura';
   impostaScadenze([]);
+  clienteSelezionato = null;
+  chiudiBannerCliente();
+  document.getElementById('cerca_cliente').value = '';
   toggleSdd();
   setRegime('forfettario');
   setEditMode(null);
