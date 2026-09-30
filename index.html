@@ -606,18 +606,19 @@ textarea { resize:vertical; min-height:60px; }
       <span>Modalità di pagamento</span>
       <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:normal;text-transform:none;cursor:pointer;">
         <input type="checkbox" id="sdd_on" checked onchange="toggleSdd()" style="width:auto;accent-color:#F9A825;" />
-        Includi addebito automatico
+        Includi addebito diretto SDD
       </label>
     </div>
     <div class="card-body">
       <div id="sdd_box" style="background:#FFF8E1;border:1px solid #F0C36D;border-radius:8px;padding:14px;">
         <div style="font-size:13px;font-weight:600;color:#7A5200;margin-bottom:6px;">
-          Addebito automatico su fattura tramite TeamSystem — condizione operativa obbligatoria
+          Addebito diretto SEPA (SDD) tramite GoCardless — condizione operativa obbligatoria
         </div>
         <p style="font-size:12px;color:#6b5426;margin:0;line-height:1.55;">
-          Il pagamento dei corrispettivi avviene esclusivamente mediante <strong>addebito automatico</strong>
-          collegato al servizio TeamSystem. L'attivazione del mandato è <strong>presupposto operativo per l'avvio
-          e la prosecuzione dell'incarico</strong> e viene presentata al cliente come condizione non negoziabile.
+          Il pagamento dei corrispettivi avviene mediante <strong>addebito diretto SEPA (SDD)</strong> sul conto
+          del cliente. Il mandato di addebito si sottoscrive online sulla pagina sicura <strong>GoCardless</strong>
+          (link inviato al cliente). L'attivazione del mandato è <strong>presupposto operativo per l'avvio
+          e la prosecuzione dell'incarico</strong>. Nel preventivo è pattuito il preavviso di addebito ridotto a 2 giorni.
         </p>
         <div style="margin-top:10px;">
           <label style="font-size:11px;">Testo alternativo se l'addebito viene escluso</label>
@@ -626,8 +627,28 @@ textarea { resize:vertical; min-height:60px; }
         </div>
       </div>
       <p id="sdd_off_msg" style="display:none;font-size:12px;color:#C62828;margin-top:10px;">
-        ⚠ Addebito automatico <strong>escluso</strong> da questa offerta: nel preventivo comparirà solo la modalità alternativa indicata sopra.
+        ⚠ Addebito SDD <strong>escluso</strong> da questa offerta: nel preventivo comparirà solo la modalità alternativa indicata sopra.
       </p>
+
+      <!-- SCADENZE CONCORDATE: si affiancano alla fatturazione trimestrale -->
+      <div style="margin-top:16px;border-top:1px solid #E4EAF3;padding-top:14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;">
+          <div>
+            <div style="font-size:13px;font-weight:600;color:#1F3864;">Scadenze di pagamento concordate</div>
+            <div style="font-size:11px;color:#888;">Facoltative — es. primo periodo di servizi, acconto all'attivazione, frazionamento.
+              Si affiancano alla fatturazione trimestrale: il residuo segue il trimestrale.</div>
+          </div>
+          <button type="button" class="btn btn-gray" style="padding:5px 12px;font-size:12px;white-space:nowrap;" onclick="addScadenza()">＋ Aggiungi scadenza</button>
+        </div>
+        <table class="svc-table" id="scad_table" style="display:none;margin-top:8px;">
+          <thead><tr>
+            <th style="width:150px;">Data</th><th>Descrizione</th>
+            <th class="col-pr" style="width:130px;">Importo (€)</th><th style="width:28px"></th>
+          </tr></thead>
+          <tbody id="scad_body"></tbody>
+        </table>
+        <div id="scad_riepilogo" style="display:none;margin-top:8px;font-size:12px;padding:8px 10px;border-radius:6px;"></div>
+      </div>
     </div>
   </div>
 
@@ -1228,15 +1249,74 @@ function updateTotals() {
   document.getElementById('grand_tot').textContent = '€ ' + fmt(grand);
   window._grandTotal = grand;
   updateRefComm();
+  if (document.getElementById('scad_body')) aggiornaScadenze();
 }
 
 // ─── MODALITÀ DI PAGAMENTO ────────────────────────────────────
-// L'addebito automatico TeamSystem è previsto di default come condizione
-// operativa obbligatoria, ma può essere escluso caso per caso in trattativa.
+// L'addebito diretto SEPA (SDD) via GoCardless è previsto di default come
+// condizione operativa obbligatoria, ma può essere escluso caso per caso.
 function toggleSdd() {
   const on = document.getElementById('sdd_on').checked;
   document.getElementById('sdd_box').style.opacity = on ? '1' : '.45';
   document.getElementById('sdd_off_msg').style.display = on ? 'none' : 'block';
+}
+
+// ─── SCADENZE DI PAGAMENTO CONCORDATE ─────────────────────────
+// Righe libere (data, descrizione, importo) che si AFFIANCANO alla fatturazione
+// trimestrale: coprono pagamenti particolari (primo periodo, acconto, rate) e il
+// residuo del totale annuo resta sul trimestrale. Importi IVA esclusa.
+function addScadenza(s) {
+  s = s || {};
+  const tb = document.getElementById('scad_body');
+  const tr = document.createElement('tr');
+  tr.className = 'scad-row';
+  tr.innerHTML = `
+    <td><input type="date" class="scad-data" value="${esc(s.data || '')}" onchange="aggiornaScadenze()" style="font-size:12px;padding:5px 6px;"></td>
+    <td><input type="text" class="scad-descr" value="${esc(s.descr || '')}" placeholder="es. Primo periodo di servizi"
+               oninput="aggiornaScadenze()" style="width:100%;font-size:12px;padding:5px 7px;"></td>
+    <td class="col-pr"><input type="number" class="scad-importo" value="${s.importo != null ? s.importo : ''}" min="0" step="10"
+               oninput="aggiornaScadenze()" style="font-size:12px;"></td>
+    <td><button class="del-btn" onclick="this.closest('tr').remove();aggiornaScadenze();">✕</button></td>`;
+  tb.appendChild(tr);
+  aggiornaScadenze();
+  if (!s.data) tr.querySelector('.scad-data').focus();
+}
+
+function leggiScadenze() {
+  return Array.from(document.querySelectorAll('#scad_body tr.scad-row')).map(tr => ({
+    data:    tr.querySelector('.scad-data').value,
+    descr:   tr.querySelector('.scad-descr').value.trim(),
+    importo: parseFloat(tr.querySelector('.scad-importo').value) || 0,
+  })).filter(s => s.data || s.descr || s.importo)
+     .sort((a, b) => (a.data || '9999').localeCompare(b.data || '9999'));
+}
+
+function impostaScadenze(lista) {
+  document.getElementById('scad_body').innerHTML = '';
+  (lista || []).forEach(s => addScadenza(s));
+  aggiornaScadenze();
+}
+
+// Riepilogo: quanto coprono le scadenze e quanto resta al trimestrale
+function aggiornaScadenze() {
+  const righe = document.querySelectorAll('#scad_body tr.scad-row').length;
+  document.getElementById('scad_table').style.display = righe ? '' : 'none';
+  const box = document.getElementById('scad_riepilogo');
+  if (!righe) { box.style.display = 'none'; return; }
+  const somma = leggiScadenze().reduce((t, s) => t + s.importo, 0);
+  const totale = window._grandTotal || 0;
+  const residuo = Math.round((totale - somma) * 100) / 100;
+  box.style.display = 'block';
+  if (residuo < 0) {
+    box.style.cssText += ';background:#FFEBEE;border:1px solid #EF9A9A;color:#B71C1C;';
+    box.innerHTML = `⚠ Le scadenze sommano <strong>€ ${fmt(somma)}</strong>, più del totale annuo di € ${fmt(totale)} (eccedenza € ${fmt(-residuo)}). Verifica gli importi.`;
+  } else if (residuo === 0) {
+    box.style.cssText += ';background:#E8F5E9;border:1px solid #A5D6A7;color:#1B5E20;';
+    box.innerHTML = `✔ Le scadenze coprono l'intero totale annuo (€ ${fmt(somma)}).`;
+  } else {
+    box.style.cssText += ';background:#EEF3FB;border:1px solid #C0C8D8;color:#1F3864;';
+    box.innerHTML = `Scadenze concordate: <strong>€ ${fmt(somma)}</strong> · residuo a fatturazione trimestrale: <strong>€ ${fmt(residuo)}</strong> (totale annuo € ${fmt(totale)})`;
+  }
 }
 
 // ─── REFERENTE / COMMISSIONE ──────────────────────────────────
@@ -1333,7 +1413,7 @@ function collectOffer() {
     referente_nome: refNome,
     referente_commissione_pct: refPct,
     segnalatore_id: segId,
-    offer_json: { regime: currentRegime, contab, extra: extraRows, lavoro, lavoro_in_totale: lTotale, pratiche, pratiche_in_totale: pTotale, finanza_canone: fOn2 ? fCanone2 : 0, finanza_in_totale: fTotale2, pec_attivo: pecOn2, pec_canone: pecCanone2, sdd_attivo: document.getElementById('sdd_on').checked, pag_alternativo: v('pag_alternativo'), note: v('note'), grand, referente_tipo: refTipo, referente_nome: refNome, referente_commissione_pct: refPct },
+    offer_json: { regime: currentRegime, contab, extra: extraRows, lavoro, lavoro_in_totale: lTotale, pratiche, pratiche_in_totale: pTotale, finanza_canone: fOn2 ? fCanone2 : 0, finanza_in_totale: fTotale2, pec_attivo: pecOn2, pec_canone: pecCanone2, sdd_attivo: document.getElementById('sdd_on').checked, pag_alternativo: v('pag_alternativo'), scadenze: leggiScadenze(), note: v('note'), grand, referente_tipo: refTipo, referente_nome: refNome, referente_commissione_pct: refPct },
   };
 }
 
@@ -1474,6 +1554,7 @@ async function loadOfferIntoForm(id) {
     // Modalità di pagamento
     document.getElementById('sdd_on').checked = oj.sdd_attivo !== false;
     if (oj.pag_alternativo) document.getElementById('pag_alternativo').value = oj.pag_alternativo;
+    impostaScadenze(oj.scadenze || []);
     toggleSdd();
     // Referente / commissione (legge dai campi colonna o dal JSON)
     const rTipo = o.referente_tipo || oj.referente_tipo || 'generico';
@@ -2320,10 +2401,12 @@ function renderPreview(o) {
     : `Con la presente facciamo seguito ai colloqui intercorsi e sottoponiamo la seguente proposta professionale a favore di <strong>${rs}</strong>`;
   const sddAttivo = o.offer_json.sdd_attivo !== false;   // default: previsto
   const pagAlt = o.offer_json.pag_alternativo || 'pagamento a mezzo bonifico bancario a ricevimento fattura';
+  const scadenze = (o.offer_json.scadenze || []).filter(s => s.data || s.importo);
   intro += `. I compensi verranno fatturati trimestralmente in via anticipata con conguaglio al trimestre successivo, ` +
            (sddAttivo
-             ? `con addebito automatico su fattura tramite il servizio TeamSystem.`
-             : `${pagAlt}.`);
+             ? `con pagamento mediante addebito diretto SEPA (SDD)`
+             : pagAlt) +
+           (scadenze.length ? `, fatte salve le scadenze specificamente concordate indicate nella sezione "Modalità di pagamento".` : `.`);
   html += `<p class="doc-intro">${intro}</p>`;
 
   if (o.passaggio_studio) {
@@ -2432,11 +2515,13 @@ function renderPreview(o) {
   if (sddAttivo) {
     html += `<div class="sec-bar navy">MODALITÀ DI PAGAMENTO</div>
     <p style="font-size:12px;color:#333;margin:7px 0 5px;line-height:1.6;">
-      Il pagamento dei corrispettivi avviene mediante <strong>addebito automatico su fattura tramite il servizio
-      TeamSystem</strong>. L'attivazione del relativo mandato costituisce <strong>presupposto operativo per l'avvio
-      e la prosecuzione dell'incarico</strong>.</p>
-    <div class="dbullet">• Il cliente sottoscrive il mandato di addebito contestualmente all'accettazione della presente offerta.</div>
-    <div class="dbullet">• L'addebito è disposto alla scadenza indicata in fattura, secondo la periodicità trimestrale anticipata.</div>
+      Il pagamento dei corrispettivi avviene mediante <strong>addebito diretto SEPA (SDD – SEPA Direct Debit)</strong>
+      sul conto corrente indicato dal cliente, gestito tramite il circuito <strong>GoCardless</strong>.
+      L'attivazione del relativo mandato costituisce <strong>presupposto operativo per l'avvio e la prosecuzione
+      dell'incarico</strong>.</p>
+    <div class="dbullet">• Il cliente sottoscrive il mandato di addebito diretto SEPA contestualmente all'accettazione della presente offerta, tramite la pagina sicura GoCardless il cui collegamento gli viene inviato.</div>
+    <div class="dbullet">• L'addebito è disposto alla scadenza indicata in fattura, secondo la periodicità trimestrale anticipata${scadenze.length ? ' e alle scadenze concordate riportate di seguito' : ''}.</div>
+    <div class="dbullet">• Le parti convengono che il preavviso di addebito (pre-notifica SEPA) sia ridotto a <strong>2 giorni</strong> rispetto alla data di addebito.</div>
     <div class="dbullet">• Il cliente si impegna a mantenere attivo il mandato e la relativa provvista per tutta la durata dell'incarico.</div>
     <div class="dbullet">• La revoca del mandato senza contestuale accordo scritto su una diversa modalità di pagamento comporta la sospensione dei servizi.</div>`;
   } else {
@@ -2445,10 +2530,28 @@ function renderPreview(o) {
       Fatturazione trimestrale anticipata con conguaglio al trimestre successivo, ${pagAlt}.</p>`;
   }
 
+  // Scadenze concordate: si affiancano alla fatturazione trimestrale
+  if (scadenze.length) {
+    const sommaScad = scadenze.reduce((t, s) => t + (parseFloat(s.importo) || 0), 0);
+    const residuo = Math.round(((parseFloat(o.totale_annuo) || 0) - sommaScad) * 100) / 100;
+    const dataIt = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit', year:'numeric'}) : 'da definire';
+    html += `<p style="font-size:12px;color:#333;margin:11px 0 5px;"><strong>Scadenze di pagamento concordate</strong></p>
+    <table class="ptbl">
+      <tr><th style="width:110px;">Scadenza</th><th>Descrizione</th><th style="text-align:right;width:140px;">Importo (IVA escl.)</th></tr>
+      ${scadenze.map(s => `<tr><td>${dataIt(s.data)}</td><td>${esc(s.descr) || '—'}</td>
+        <td style="text-align:right;"><strong>€ ${fmt(parseFloat(s.importo) || 0)}</strong></td></tr>`).join('')}
+      <tr><td colspan="2" style="text-align:right;"><strong>Totale scadenze concordate</strong></td>
+        <td style="text-align:right;"><strong>€ ${fmt(sommaScad)}</strong></td></tr>
+    </table>
+    <p style="font-size:11px;color:#555;margin:5px 0 0;">${residuo > 0
+      ? `Il residuo di € ${fmt(residuo)} del corrispettivo annuo segue la fatturazione trimestrale anticipata sopra indicata.`
+      : `Le scadenze indicate coprono l'intero corrispettivo annuo.`}</p>`;
+  }
+
   html += `<div class="sec-bar blue">CONDIZIONI GENERALI</div>
   <ul style="font-size:12px;color:#333;margin:7px 0 0 16px;line-height:1.8;">
     <li>I compensi indicati sono al netto di IVA, diritti, bolli e spese vive.</li>
-    <li>La fatturazione avviene a cadenza trimestrale anticipata con conguaglio, ${sddAttivo ? 'con addebito automatico tramite TeamSystem' : pagAlt}.</li>
+    <li>La fatturazione avviene a cadenza trimestrale anticipata con conguaglio, ${sddAttivo ? 'con pagamento mediante addebito diretto SEPA (SDD)' : pagAlt}${scadenze.length ? ', fatte salve le scadenze concordate' : ''}.</li>
     <li>Le attività vengono svolte nel rispetto delle normative vigenti. Eventuali prestazioni riservate ad albi saranno svolte tramite professionisti abilitati.</li>
     <li>I compensi potranno essere adeguati in funzione del volume operativo e della complessità gestionale.</li>
     <li>La presente offerta ha validità di 30 giorni dalla data di emissione.</li>
@@ -2503,6 +2606,7 @@ function resetForm() {
   document.getElementById('pec_canone').value = PEC_TARIFFE['forfettario'];
   document.getElementById('sdd_on').checked = true;
   document.getElementById('pag_alternativo').value = 'pagamento a mezzo bonifico bancario a ricevimento fattura';
+  impostaScadenze([]);
   toggleSdd();
   setRegime('forfettario');
   setEditMode(null);
