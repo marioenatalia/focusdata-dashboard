@@ -1942,26 +1942,11 @@ function firmaDisponibile() {
 async function loadStatiFirma() {
   if (!firmaDisponibile()) { statiFirma = {}; return; }
   try {
-    const r = await fetch(apiBase() + '/api/staff/documenti?tipo=preventivo');
+    // Endpoint di PREVIO (non /api/staff/*): solo le offerte dello studio,
+    // già ridotte al documento più recente per offerta
+    const r = await fetch(apiBase() + '/api/offerte-stati-firma');
     if (!r.ok) return;
-    const raw = await r.json();
-    const lista = Array.isArray(raw) ? raw : (raw.data || []);
-    const m = {};
-    lista.forEach(d => {
-      let meta = {};
-      try { meta = JSON.parse(d.contenuto || '{}'); } catch { return; }
-      const oid = meta.offerta_id;
-      if (!oid) return;
-      if (!m[oid] || new Date(d.created_at) > new Date(m[oid].data)) {
-        const op = d.opzioni || {};
-        m[oid] = { stato: d.stato, doc_id: d.id, data: d.created_at,
-                   firmato_da: d.firmato_da, firmato_il: d.firmato_il, firma_ip: d.firma_ip,
-                   firma_tipo: op.firma_tipo || 'otp', formato: op.formato,
-                   codice_fiscale: op.codice_fiscale, ente_certificatore: op.ente_certificatore,
-                   file_id: op.file_id, file_pdf_id: op.file_pdf_id, file_nome: op.file_nome };
-      }
-    });
-    statiFirma = m;
+    statiFirma = await r.json() || {};
   } catch(e) { console.warn('Stati firma:', e.message); }
 }
 
@@ -1975,7 +1960,7 @@ function bottoneFirma(o) {
   if (f && f.stato === 'firmato') {
     const qual = f.firma_tipo === 'qualificata';
     const scarica = f.file_id
-      ? `<button class="btn-firma-sm scarica" onclick="scaricaFirmato('${f.file_id}')" title="Apri il documento firmato ORIGINALE: è quello con valore legale, ma la firma non si vede stampata">⬇ Originale</button>
+      ? `<button class="btn-firma-sm scarica" onclick="scaricaFirmato(${o.id})" title="Apri il documento firmato ORIGINALE: è quello con valore legale, ma la firma non si vede stampata">⬇ Originale</button>
          <button class="btn-firma-sm attest" onclick="copiaAttestata(${o.id})" title="Copia leggibile con gli estremi della firma stampati in fondo — è questa da stampare su carta">🖨 Stampa con firma</button>` : '';
     return `<span class="badge-firmato" title="${qual ? 'Firma digitale qualificata (CNS / dispositivo) — ' + esc(f.formato||'') : 'Firma OTP (FES)'} · archiviato in Documenti Firmati">${qual ? '🔏 Firmato CNS' : '✍ Firmato'}</span>${scarica}${btnCarica}`;
   }
@@ -2026,8 +2011,21 @@ function istruzioniFirma() {
 
 // Apre il documento firmato ORIGINALE: è quello con valore legale, con la
 // firma verificabile in Adobe. La ristampa da PREVIO è solo una copia di lavoro.
-function scaricaFirmato(fileId) {
-  window.open(apiBase() + '/api/staff/files/' + fileId, '_blank', 'noopener');
+// L'endpoint è autenticato: fetch col token (aggiunto dall'intercettore) + blob.
+async function scaricaFirmato(id) {
+  try {
+    const r = await fetch(`${apiBase()}/api/offerte/${id}/firmato-originale`);
+    if (!r.ok) { const d = await r.json().catch(()=>({})); alert('⚠ ' + (d.error || 'Errore')); return; }
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    if (blob.type === 'application/pdf') window.open(url, '_blank', 'noopener');
+    else {   // .p7m: il browser non lo mostra, si scarica col nome originale
+      const a = document.createElement('a');
+      a.href = url; a.download = (statiFirma[id] && statiFirma[id].file_nome) || `offerta-${id}-firmata.p7m`;
+      document.body.appendChild(a); a.click(); a.remove();
+    }
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  } catch(e) { alert('Errore: ' + e.message); }
 }
 
 // Copia leggibile del documento firmato, con gli estremi della firma stampati
