@@ -1976,7 +1976,10 @@ function bottoneFirma(o) {
     const scarica = f.file_id
       ? `<button class="btn-firma-sm scarica" onclick="scaricaFirmato(${o.id})" title="Apri il documento firmato ORIGINALE: è quello con valore legale, ma la firma non si vede stampata">⬇ Originale</button>
          <button class="btn-firma-sm attest" onclick="copiaAttestata(${o.id})" title="Copia leggibile con gli estremi della firma stampati in fondo — è questa da stampare su carta">🖨 Stampa con firma</button>` : '';
-    return `<span class="badge-firmato" title="${qual ? 'Firma digitale qualificata (CNS / dispositivo) — ' + esc(f.formato||'') : 'Firma OTP (FES)'} · archiviato in Documenti Firmati">${qual ? '🔏 Firmato CNS' : '✍ Firmato'}</span>${scarica}${btnCarica}`;
+    // Offerta modificata dopo la firma: si rimanda la versione attuale in firma
+    // OTP. La firma precedente resta archiviata in Documenti Firmati.
+    const btnRinvia = `<button class="btn-firma-sm" onclick="rinviaFirma(${o.id})" title="L'offerta è stata modificata dopo la firma? Rimanda la versione attuale al cliente per una nuova firma OTP">✍ Rinvia OTP</button>`;
+    return `<span class="badge-firmato" title="${qual ? 'Firma digitale qualificata (CNS / dispositivo) — ' + esc(f.formato||'') : 'Firma OTP (FES)'} · archiviato in Documenti Firmati">${qual ? '🔏 Firmato CNS' : '✍ Firmato'}</span>${scarica}${btnRinvia}${btnCarica}`;
   }
   if (f)
     return `<button class="btn-firma-sm attesa" onclick="apriFirma(${o.id})" title="Firma OTP già richiesta — riapri nello Staff Dashboard">⏳ In firma</button>${btnCarica}`;
@@ -2099,6 +2102,18 @@ function caricaFirmaDigitale(id) {
 // Apre lo Staff Dashboard direttamente sull'offerta scelta
 function apriFirma(id) {
   window.open(`${STAFF_URL}/#/preventivi?offerta=${id}`, '_blank', 'noopener');
+}
+
+// Nuova firma OTP su un'offerta già firmata (es. modificata dopo la firma).
+// Lo Staff crea un nuovo documento "in firma": diventa il più recente, quindi
+// la tabella mostra "In firma" finché il cliente non firma la nuova versione.
+function rinviaFirma(id) {
+  const f = statiFirma[id] || {};
+  const quando = f.firmato_il ? ' il ' + new Date(f.firmato_il).toLocaleDateString('it-IT') : '';
+  if (!confirm(`L'offerta #${id} risulta già firmata${quando}.\n\n` +
+               'Vuoi mandare al cliente la versione ATTUALE per una nuova firma OTP?\n\n' +
+               'La firma precedente resta archiviata in Documenti Firmati.')) return;
+  apriFirma(id);
 }
 
 // ─── OPERATORI DELLO STUDIO ───────────────────────────────────
