@@ -635,12 +635,12 @@ textarea { resize:vertical; min-height:60px; }
     <div class="card-body">
       <div id="sdd_box" style="background:#FFF8E1;border:1px solid #F0C36D;border-radius:8px;padding:14px;">
         <div style="font-size:13px;font-weight:600;color:#7A5200;margin-bottom:6px;">
-          Addebito diretto SEPA (SDD) tramite GoCardless — condizione operativa obbligatoria
+          Addebito diretto SEPA (SDD) tramite Qonto — condizione operativa obbligatoria
         </div>
         <p style="font-size:12px;color:#6b5426;margin:0;line-height:1.55;">
           Il pagamento dei corrispettivi avviene mediante <strong>addebito diretto SEPA (SDD)</strong> sul conto
-          del cliente. Il mandato di addebito si sottoscrive online sulla pagina sicura <strong>GoCardless</strong>
-          (link inviato al cliente). L'attivazione del mandato è <strong>presupposto operativo per l'avvio
+          del cliente, disposto dallo studio tramite il conto <strong>Qonto</strong>. Il cliente sottoscrive il
+          mandato SEPA con l'accettazione dell'offerta, indicando l'IBAN da addebitare. L'attivazione del mandato è <strong>presupposto operativo per l'avvio
           e la prosecuzione dell'incarico</strong>. Nel preventivo è pattuito il preavviso di addebito ridotto a 2 giorni.
         </p>
         <div style="margin-top:10px;">
@@ -1276,7 +1276,7 @@ function updateTotals() {
 }
 
 // ─── MODALITÀ DI PAGAMENTO ────────────────────────────────────
-// L'addebito diretto SEPA (SDD) via GoCardless è previsto di default come
+// L'addebito diretto SEPA (SDD) via Qonto è previsto di default come
 // condizione operativa obbligatoria, ma può essere escluso caso per caso.
 function toggleSdd() {
   const on = document.getElementById('sdd_on').checked;
@@ -1627,19 +1627,23 @@ async function loadOfferIntoForm(id) {
     dp.value = o.data_offerta ? o.data_offerta.split('T')[0] : '';
     document.getElementById('passaggio_studio').checked = o.passaggio_studio || false;
     document.getElementById('note').value = oj.note || '';
-    // Regime e contab
+    // Regime e contab.
+    // ⚠️ "??" e non "||": uno ZERO salvato (es. deposito bilancio non previsto)
+    // è un valore vero, non un campo vuoto. Con "||" diventava la tariffa
+    // standard e aprire un'offerta emessa ne alzava l'importo senza avvisare.
     setRegime(o.regime || 'forfettario');
+    const cb = oj.contab || {};
     if (o.regime === 'forfettario') {
-      document.getElementById('f_canone').value = oj.contab.canone || 660;
+      document.getElementById('f_canone').value = cb.canone ?? 660;
     } else if (o.regime === 'semplificato') {
-      document.getElementById('s_canone').value = oj.contab.canone || 1360;
+      document.getElementById('s_canone').value = cb.canone ?? 1360;
     } else {
-      if (oj.contab.tipo) document.getElementById('o_tipo').value = oj.contab.tipo;
-      document.getElementById('o_mens').value = oj.contab.mens || 208;
-      document.getElementById('o_ann').value  = oj.contab.ann  || 2500;
-      document.getElementById('o_ass').value  = oj.contab.ass  || 350;
-      document.getElementById('o_bil').value  = oj.contab.bil  || 600;
-      document.getElementById('o_dep').value  = oj.contab.dep  || 300;
+      if (cb.tipo) document.getElementById('o_tipo').value = cb.tipo;
+      document.getElementById('o_mens').value = cb.mens ?? 208;
+      document.getElementById('o_ann').value  = cb.ann  ?? 2500;
+      document.getElementById('o_ass').value  = cb.ass  ?? 350;
+      document.getElementById('o_bil').value  = cb.bil  ?? 600;
+      document.getElementById('o_dep').value  = cb.dep  ?? 300;
     }
     // Ripristina sezione helper
     function restoreSvc(sec, savedRows, inTotale) {
@@ -1701,21 +1705,31 @@ async function loadOfferIntoForm(id) {
     }
     restoreSvc('lavoro',  oj.lavoro,  oj.lavoro_in_totale);
     restoreSvc('pratiche',oj.pratiche,oj.pratiche_in_totale);
+    // Servizi aggiunti al modulo dopo l'emissione di un'offerta: se l'offerta
+    // non li ha, vanno SPENTI. Lasciare il valore predefinito (o quello
+    // dell'offerta aperta prima) li aggiungeva in silenzio a un preventivo emesso.
     // Finanza agevolata — canone singolo
     if (oj.finanza_canone !== undefined) {
       document.getElementById('finanza_canone').value = oj.finanza_canone || 300;
       document.getElementById('finanza_on').checked = oj.finanza_canone > 0;
-      toggleSez('finanza');
       document.getElementById('finanza_totale').checked = oj.finanza_in_totale || false;
+    } else {
+      document.getElementById('finanza_on').checked = false;
+      document.getElementById('finanza_totale').checked = false;
     }
+    toggleSez('finanza');
     // Monitoraggio PEC
     if (oj.pec_canone !== undefined) {
       document.getElementById('pec_on').checked = !!oj.pec_attivo;
       document.getElementById('pec_canone').value = oj.pec_canone || PEC_TARIFFE[o.regime] || 60;
-      pecManuale = true;   // rispetta l'importo salvato, non sovrascriverlo
+    } else {
+      document.getElementById('pec_on').checked = false;            // offerta emessa senza PEC
+      document.getElementById('pec_canone').value = PEC_TARIFFE[o.regime] || 60;
     }
-    // Modalità di pagamento
-    document.getElementById('sdd_on').checked = oj.sdd_attivo !== false;
+    pecManuale = true;   // rispetta l'importo dell'offerta, il cambio regime non lo sovrascrive
+    // Modalità di pagamento: le offerte emesse prima della clausola SDD
+    // (campo assente) erano a bonifico e restano tali finché non la si attiva.
+    document.getElementById('sdd_on').checked = oj.sdd_attivo === true;
     if (oj.pag_alternativo) document.getElementById('pag_alternativo').value = oj.pag_alternativo;
     impostaScadenze(oj.scadenze || []);
     toggleSdd();
@@ -2560,7 +2574,9 @@ function renderPreview(o) {
   let intro = o.passaggio_studio
     ? `Con la presente, facciamo seguito ai colloqui intercorsi${o.settore?' ('+o.settore+')':''} e, nel prendere atto del passaggio dalla precedente struttura professionale, sottoponiamo la seguente proposta per la gestione degli adempimenti contabili e fiscali a favore di <strong>${rs}</strong>`
     : `Con la presente facciamo seguito ai colloqui intercorsi e sottoponiamo la seguente proposta professionale a favore di <strong>${rs}</strong>`;
-  const sddAttivo = o.offer_json.sdd_attivo !== false;   // default: previsto
+  // Le offerte nuove salvano sempre sdd_attivo; se manca è un'offerta emessa
+  // prima della clausola SDD (a bonifico): la ristampa non deve aggiungerla.
+  const sddAttivo = o.offer_json.sdd_attivo === true;
   const pagAlt = o.offer_json.pag_alternativo || 'pagamento a mezzo bonifico bancario a ricevimento fattura';
   const scadenze = (o.offer_json.scadenze || []).filter(s => s.data || s.importo);
   intro += `. I compensi verranno fatturati trimestralmente in via anticipata con conguaglio al trimestre successivo, ` +
@@ -2677,10 +2693,10 @@ function renderPreview(o) {
     html += `<div class="sec-bar navy">MODALITÀ DI PAGAMENTO</div>
     <p style="font-size:12px;color:#333;margin:7px 0 5px;line-height:1.6;">
       Il pagamento dei corrispettivi avviene mediante <strong>addebito diretto SEPA (SDD – SEPA Direct Debit)</strong>
-      sul conto corrente indicato dal cliente, gestito tramite il circuito <strong>GoCardless</strong>.
+      sul conto corrente indicato dal cliente, disposto da ${esc(nomeStudio)}${(!studioCorrente || studioCorrente.slug === 'focusdata') ? ' tramite il proprio conto <strong>Qonto</strong>' : ''}.
       L'attivazione del relativo mandato costituisce <strong>presupposto operativo per l'avvio e la prosecuzione
       dell'incarico</strong>.</p>
-    <div class="dbullet">• Il cliente sottoscrive il mandato di addebito diretto SEPA contestualmente all'accettazione della presente offerta, tramite la pagina sicura GoCardless il cui collegamento gli viene inviato.</div>
+    <div class="dbullet">• Il cliente sottoscrive il mandato di addebito diretto SEPA a favore di ${esc(nomeStudio)} contestualmente all'accettazione della presente offerta, indicando l'IBAN del conto da addebitare.</div>
     <div class="dbullet">• L'addebito è disposto alla scadenza indicata in fattura, secondo la periodicità trimestrale anticipata${scadenze.length ? ' e alle scadenze concordate riportate di seguito' : ''}.</div>
     <div class="dbullet">• Le parti convengono che il preavviso di addebito (pre-notifica SEPA) sia ridotto a <strong>2 giorni</strong> rispetto alla data di addebito.</div>
     <div class="dbullet">• Il cliente si impegna a mantenere attivo il mandato e la relativa provvista per tutta la durata dell'incarico.</div>
